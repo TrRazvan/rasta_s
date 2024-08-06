@@ -43,9 +43,4 @@ int main(int argc, char* argv[]) {
 
     Rass_OpenConnection(0);
 
-
-
-
-
-
 }
