@@ -40,6 +40,25 @@ static void test_sm_client_init_to_open(void** state)
     assert_true(sm_client.state==STATE_DOWN);
 }
 
+static void test_sm_server_init(void** state)
+{
+    (void)state;
+
+    StdRet_t ret = Sm_Init(&sm_server);
+    assert_true(ret==OK);
+    assert_true(sm_server.state==STATE_CLOSED);
+}
+
+static void test_sm_server_init_to_open(void** state)
+{
+    PDU_S pdu = { 0 };
+
+    test_sm_server_init(state);
+    assert_true(sm_server.state==STATE_CLOSED);
+
+    Sm_HandleEvent(&sm_server, EVENT_OPEN_CONN, &pdu);
+    assert_true(sm_server.state==STATE_CLOSED);
+}
 
 extern int test_sm_connection(void) {
     int return_value = -1;
@@ -47,6 +66,7 @@ extern int test_sm_connection(void) {
     const struct CMUnitTest sm_connection_tests[] = {
         cmocka_unit_test(test_sm_client_init),
         cmocka_unit_test(test_sm_client_init_to_open),
+        cmocka_unit_test(test_sm_server_init),
     };
 
     return_value = cmocka_run_group_tests_name("sm_connection_tests", sm_connection_tests, NULL, NULL);

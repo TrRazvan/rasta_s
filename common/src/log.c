@@ -1,4 +1,3 @@
-
 #include "log.h"
 
 static LogLevel LOG_LEVEL_FILTER = LOG_DEBUG;
