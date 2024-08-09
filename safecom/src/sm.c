@@ -97,7 +97,7 @@ static void handle_closed(SmType *self, const Event event, const PDU_S recv_pdu)
                 self->cst = 0;
                 self->ctsr = 0; /* TODO: RTR - Tlocal */
 
-                pdu_to_send = ConnReq(*self);
+                pdu_to_send = ConnReq(self);
                 /* TODO: RTR - Send ConnReq */
 
                 self->state = STATE_START;
@@ -129,14 +129,14 @@ static void handle_down(SmType *self, const Event event, const PDU_S recv_pdu)
                 self->ctsr = 0; /* TODO: RTR - Tlocal */
                 self->state = STATE_START;
 
-                pdu_to_send = ConnResp(*self);
+                pdu_to_send = ConnResp(self);
                 /* TODO: RTR - Send ConnResp */
             }
             else
             {
                 close_connection(self);
 
-                pdu_to_send = DiscReq(6, NO_DETAILED_REASON, *self);
+                pdu_to_send = DiscReq(6, NO_DETAILED_REASON, self);
                 /* TODO: RTR - Send DiscReq(6) */
             }
             break;
@@ -157,7 +157,7 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
         case EVENT_SEND_DATA:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(5) */
             break;
 
@@ -168,14 +168,14 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
         case EVENT_RECV_RETR_DATA:
             close_connection(self);
 
-            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(2) */
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(0) */
             break;
 
@@ -185,7 +185,7 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
             {
                 close_connection(self);
 
-                pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
+                pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
                 /* TODO: RTR - Send DiscReq(2) */
             }
             else if (self->role == ROLE_CLIENT)
@@ -194,14 +194,14 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     self->state = STATE_UP;
 
-                    pdu_to_send = HB(*self);
+                    pdu_to_send = HB(self);
                     /* TODO: RTR - Send HB */
                 }
                 else
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(6, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(6, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(6) */
                 }
             }
@@ -227,7 +227,7 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
                         {
                             close_connection(self);
 
-                            pdu_to_send = DiscReq(8, NO_DETAILED_REASON, *self);
+                            pdu_to_send = DiscReq(8, NO_DETAILED_REASON, self);
                             /* TODO: RTR - Send DiscReq(8) */
                         }
                     }
@@ -235,7 +235,7 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
                     {
                         close_connection(self);
 
-                        pdu_to_send = DiscReq(3, NO_DETAILED_REASON, *self);
+                        pdu_to_send = DiscReq(3, NO_DETAILED_REASON, self);
                         /* TODO: RTR - Send DiscReq(3) */
                     }
                 }
@@ -243,7 +243,7 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(2) */
                 }
             break;
@@ -265,14 +265,14 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(5) */
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(0) */
             break;
 
@@ -286,7 +286,7 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
         case EVENT_RECV_RETR_DATA:
             close_connection(self);
 
-            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(2) */
             break;
 
@@ -309,7 +309,7 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -325,7 +325,7 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -344,7 +344,7 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(8, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(8, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(8) */
                 }
             }
@@ -352,7 +352,7 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
             {
                 self->state = STATE_RETR_REQ;
 
-                pdu_to_send = RetrReq(*self);
+                pdu_to_send = RetrReq(self);
                 /* TODO: RTR - Send RetrReq */
             }
             break;
@@ -370,7 +370,7 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(8, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(8, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(8) */
                 }
             }
@@ -378,7 +378,7 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
             {
                 self->state = STATE_RETR_REQ;
                 
-                pdu_to_send = RetrReq(*self);
+                pdu_to_send = RetrReq(self);
                 /* TODO: RTR - Send RetrReq */
             }
             break;
@@ -399,14 +399,14 @@ static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pd
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(5) */
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(0) */
             break;
 
@@ -414,7 +414,7 @@ static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pd
         case EVENT_RECV_CONN_RESP:
             close_connection(self);
 
-            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(2) */
             break;
 
@@ -437,7 +437,7 @@ static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pd
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -453,7 +453,7 @@ static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pd
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -491,14 +491,14 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(5) */
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(0) */
             break;
 
@@ -512,7 +512,7 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
         case EVENT_RECV_RETR_RESP:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
             /* TODO: RTR - Send DiscReq(2) */
             break;
 
@@ -526,7 +526,7 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
             {
                 close_connection(self);
 
-                pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
+                pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
                 /* TODO: RTR - Send DiscReq(2) */
             }
             else
@@ -542,7 +542,7 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -563,7 +563,7 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
+                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
                     /* TODO: RTR - Send DiscReq(8) */
                 }
             }
@@ -571,7 +571,7 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
             {
                 self->state = STATE_RETR_REQ;
 
-                pdu_to_send = RetrReq(*self);
+                pdu_to_send = RetrReq(self);
                 /* TODO: RTR - Send RetrReq */
             }
             break;
@@ -622,19 +622,19 @@ void Sm_HandleEvent(SmType *self, const Event event, const PDU_S recv_pdu)
     if (event == EVENT_TH_ELAPSED) {
         switch (self->state) {
             case STATE_START:
-                pdu_to_send = HB(*self);
+                pdu_to_send = HB(self);
                 /* TODO: RTR - Send HB */
                 break;
             case STATE_UP:
-                pdu_to_send = HB(*self);
+                pdu_to_send = HB(self);
                 /* TODO: RTR - Send HB */
                 break;
             case STATE_RETR_REQ:
-                pdu_to_send = HB(*self);
+                pdu_to_send = HB(self);
                 /* TODO: RTR - Send HB */
                 break;
             case STATE_RETR_RUN:
-                pdu_to_send = HB(*self);
+                pdu_to_send = HB(self);
                 /* TODO: RTR - Send HB */
                 break;
             default:
@@ -643,7 +643,7 @@ void Sm_HandleEvent(SmType *self, const Event event, const PDU_S recv_pdu)
     } else if (event == EVENT_TI_ELAPSED) {
         close_connection(self);
 
-        pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
+        pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
         /* TODO: RTR - Send DiscReq(4) */
     }
 

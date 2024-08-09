@@ -95,7 +95,7 @@ void deserialize_pdu(const uint8_t *buffer, const size_t buffer_size, PDU_S *pdu
  *  
  * @return  Returns a Connection Request PDU.
  */
-PDU_S ConnReq(SmType self);
+PDU_S ConnReq(SmType *self);
 
 /**
  * @brief Create PDU for Connection Response.
@@ -104,7 +104,7 @@ PDU_S ConnReq(SmType self);
  *  
  * @return  Returns a Connection Response PDU.
  */
-PDU_S ConnResp(SmType self);
+PDU_S ConnResp(SmType *self);
 
 /**
  * @brief Create PDU for Retransmission Request.
@@ -113,7 +113,7 @@ PDU_S ConnResp(SmType self);
  * 
  * @return  Returns a Retransmission Request PDU.
  */
-PDU_S RetrReq(SmType self);
+PDU_S RetrReq(SmType *self);
 
 /**
  * @brief Create PDU for Retransmission Response.
@@ -122,7 +122,7 @@ PDU_S RetrReq(SmType self);
  * 
  * @return  Returns a Retransmission Response PDU.
  */
-PDU_S RetrResp(SmType self);
+PDU_S RetrResp(SmType *self);
 
 /**
  * @brief Create PDU for Disconnection Request.
@@ -133,7 +133,7 @@ PDU_S RetrResp(SmType self);
  * 
  * @return  Returns a Disconnection Request PDU.
  */
-PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType self);
+PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType *self);
 
 /**
  * @brief Create PDU for Heartbeat.
@@ -142,6 +142,6 @@ PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType self);
  * 
  * @return  Returns a Heartbeat PDU.
  */
-PDU_S HB(SmType self);
+PDU_S HB(SmType *self);
 
 #endif // PDU_H

@@ -45,6 +45,12 @@ static uint32_t read_uint32(const uint8_t *buffer, size_t *offset)
     return value;
 }
 
+static uint32_t GetCurrentTimestamp(void)
+{
+    /* TODO: RTR - Implement a platform-specific method to obtain a timestamp */
+    return 0U;
+}
+
 /* Create payload for Connection Request */
 static uint8_t *ConnReqPayload()
 {
@@ -225,7 +231,7 @@ void deserialize_pdu(const uint8_t *buffer, const size_t buffer_size, PDU_S *pdu
 }
 
 /* Create PDU for Connection Request */
-PDU_S ConnReq(SmType self)
+PDU_S ConnReq(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
@@ -233,9 +239,9 @@ PDU_S ConnReq(SmType self)
     ret_pdu.message_type = CONNECTION_REQUEST;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self.snt;
+    ret_pdu.sequence_number = self->snt;
     ret_pdu.confirmed_sequence_number = 0;
-    ret_pdu.timestamp = 0; /* TODO: RTR - Get timestamp */
+    ret_pdu.timestamp = GetCurrentTimestamp();
     ret_pdu.confirmed_timestamp = 0;
     ret_pdu.payload = ConnReqPayload();
 
@@ -246,7 +252,7 @@ PDU_S ConnReq(SmType self)
 }
 
 /* Create PDU for Connection Response */
-PDU_S ConnResp(SmType self)
+PDU_S ConnResp(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
@@ -254,10 +260,10 @@ PDU_S ConnResp(SmType self)
     ret_pdu.message_type = CONNECTION_RESPONSE;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self.snt;
-    ret_pdu.confirmed_sequence_number = self.cspdu;
-    ret_pdu.timestamp = 0; /* TODO: RTR - Get timestamp */
-    ret_pdu.confirmed_timestamp = self.ctspdu;
+    ret_pdu.sequence_number = self->snt;
+    ret_pdu.confirmed_sequence_number = self->cspdu;
+    ret_pdu.timestamp = GetCurrentTimestamp();
+    ret_pdu.confirmed_timestamp = self->ctspdu;
     ret_pdu.payload = ConnRespPayload();
 
     /* Calculate the safety code with MD4 protocol */
@@ -267,7 +273,7 @@ PDU_S ConnResp(SmType self)
 }
 
 /* Create PDU for Retransmission Request */
-PDU_S RetrReq(SmType self)
+PDU_S RetrReq(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
@@ -275,10 +281,10 @@ PDU_S RetrReq(SmType self)
     ret_pdu.message_type = RETRANSMISSION_REQUEST;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self.snpdu;
-    ret_pdu.confirmed_sequence_number = self.cspdu;
-    ret_pdu.timestamp = 0; /* TODO: RTR - Get timestamp */
-    ret_pdu.confirmed_timestamp = self.ctspdu;
+    ret_pdu.sequence_number = self->snpdu;
+    ret_pdu.confirmed_sequence_number = self->cspdu;
+    ret_pdu.timestamp = GetCurrentTimestamp();
+    ret_pdu.confirmed_timestamp = self->ctspdu;
     ret_pdu.payload = RetrReqPayload();
 
     /* Calculate the safety code with MD4 protocol */
@@ -288,7 +294,7 @@ PDU_S RetrReq(SmType self)
 }
 
 /* Create PDU for Retransmission Response */
-PDU_S RetrResp(SmType self)
+PDU_S RetrResp(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
@@ -296,10 +302,10 @@ PDU_S RetrResp(SmType self)
     ret_pdu.message_type = RETRANSMISSION_RESPONSE;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self.snpdu;
-    ret_pdu.confirmed_sequence_number = self.cspdu;
-    ret_pdu.timestamp = 0; /* TODO: RTR - Get timestamp */
-    ret_pdu.confirmed_timestamp = self.ctspdu;
+    ret_pdu.sequence_number = self->snpdu;
+    ret_pdu.confirmed_sequence_number = self->cspdu;
+    ret_pdu.timestamp = GetCurrentTimestamp();
+    ret_pdu.confirmed_timestamp = self->ctspdu;
     ret_pdu.payload = RetrRespPayload();
 
     /* Calculate the safety code with MD4 protocol */
@@ -309,7 +315,7 @@ PDU_S RetrResp(SmType self)
 }
 
 /* Create PDU for Disconnection Request */
-PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType self)
+PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType *self)
 {
     PDU_S ret_pdu = {0};
 
@@ -317,10 +323,10 @@ PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType self)
     ret_pdu.message_type = DISCONNECTION_REQUEST;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self.snpdu;
-    ret_pdu.confirmed_sequence_number = self.cspdu;
-    ret_pdu.timestamp = 0; /* TODO: RTR - Get timestamp */
-    ret_pdu.confirmed_timestamp = self.ctspdu;
+    ret_pdu.sequence_number = self->snpdu;
+    ret_pdu.confirmed_sequence_number = self->cspdu;
+    ret_pdu.timestamp = GetCurrentTimestamp();
+    ret_pdu.confirmed_timestamp = self->ctspdu;
     ret_pdu.payload = DiscReqPayload(discReason, detailedReason);
 
     /* Calculate the safety code with MD4 protocol */
@@ -330,7 +336,7 @@ PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType self)
 }
 
 /* Create PDU for Heartbeat */
-PDU_S HB(SmType self)
+PDU_S HB(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
@@ -338,10 +344,10 @@ PDU_S HB(SmType self)
     ret_pdu.message_type = HEARTBEAT;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self.snpdu;
-    ret_pdu.confirmed_sequence_number = self.cspdu;
-    ret_pdu.timestamp = 0; /* TODO: RTR - Get timestamp */
-    ret_pdu.confirmed_timestamp = self.ctspdu;
+    ret_pdu.sequence_number = self->snpdu;
+    ret_pdu.confirmed_sequence_number = self->cspdu;
+    ret_pdu.timestamp = GetCurrentTimestamp();
+    ret_pdu.confirmed_timestamp = self->ctspdu;
     ret_pdu.payload = HBPayload();
 
     /* Calculate the safety code with MD4 protocol */
