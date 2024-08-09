@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MAX_CONNECTIONS 1U
+
 static StdRet_t My_Fec_ReceiveBtp(const MsgId_t msgId, const MsgLen_t msgLen, const uint8_t* const pMsgData) {
     assert(pMsgData != NULL);
     /* Implementation of Fec_ReceiveBtp */
@@ -19,7 +21,7 @@ static StdRet_t My_IscDispApp_SendSpdu(const NodeId_t nodeId, const SpduLen_t sp
 
 
 int main(int argc, char* argv[]) {
-    const MsgId_t MAX_CONNECTIONS = 1;
+    // const MsgId_t MAX_CONNECTIONS = 1;
     SmType sms[MAX_CONNECTIONS] = { 0 }; 
 
     const SafeComConfig config_server = { .instname="server\0", 

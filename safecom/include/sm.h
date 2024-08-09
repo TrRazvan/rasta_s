@@ -10,7 +10,7 @@
 
 /* Define states of the state machine */
 typedef enum {
-    STATE_CLOSED,
+    STATE_CLOSED = 0U,
     STATE_DOWN,
     STATE_START,
     STATE_UP,
@@ -20,19 +20,19 @@ typedef enum {
 
 /* Define events that trigger state transitions */
 typedef enum {
+    EVENT_TH_ELAPSED = 0U,
+    EVENT_TI_ELAPSED,
     EVENT_OPEN_CONN,
     EVENT_CLOSE_CONN,
     EVENT_SEND_DATA,
-    EVENT_RECV_CONN_REQ,
-    EVENT_RECV_CONN_RESP,
-    EVENT_RECV_RETR_REQ,
-    EVENT_RECV_RETR_RESP,
-    EVENT_RECV_DISC_REQ,
-    EVENT_RECV_HB,
-    EVENT_RECV_DATA,
-    EVENT_RECV_RETR_DATA,
-    EVENT_TH_ELAPSED,
-    EVENT_TI_ELAPSED
+    EVENT_RECV_CONN_REQ = 6200U,
+    EVENT_RECV_CONN_RESP = 6201U,
+    EVENT_RECV_RETR_REQ = 6212U,
+    EVENT_RECV_RETR_RESP = 6213U,
+    EVENT_RECV_DISC_REQ = 6216U,
+    EVENT_RECV_HB = 6220U,
+    EVENT_RECV_DATA = 6240U,
+    EVENT_RECV_RETR_DATA = 6241U
 } Event;
 
 
@@ -45,7 +45,7 @@ typedef enum {
 typedef struct SmType SmType;
 
 /* Type definition for the state handler function pointer */
-typedef void (*EventHandler)(SmType *self, Event event, PDU_S *pdu);
+typedef void (*EventHandler)(SmType *self, const Event event, const PDU_S recv_pdu);
 
 /* State machine context definition */
 struct SmType {
@@ -75,8 +75,13 @@ struct SmType {
  */
 StdRet_t Sm_Init(SmType *self);
 
-// StdRet_t Rass_OpenConnection(RassId_t rassIdRem);
-
-void Sm_HandleEvent(SmType *self, Event event, PDU_S *pdu);
+/**
+ * @brief Initializes the RastaS module.
+ *
+ * @param[in]   self        Pointer to my RastaS structure handle.
+ * @param[in]   event       Received event to handle.
+ * @param[in]   recv_pdu    Received PDU to handle.
+ */
+void Sm_HandleEvent(SmType *self, const Event event, const PDU_S recv_pdu);
 
 #endif /* SM_H */

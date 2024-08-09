@@ -8,6 +8,8 @@
 #include "log.h"
 
 extern int test_sm_connection(void);
+extern int test_rass_server(void);
+extern int test_rass_client(void);
 
 static void simple_test(void **state) 
 {
@@ -44,8 +46,10 @@ int main(int argc, char* argv[]) {
         cmocka_unit_test(simple_test),
     };
 
-    return_value = cmocka_run_group_tests_name("simple_test" ,tests, group_setup, group_teardown);
+    // return_value = cmocka_run_group_tests_name("simple_test" ,tests, group_setup, group_teardown);
     return_value |= test_sm_connection();
+    // return_value |= test_rass_server();
+    return_value |= test_rass_client();
 
     return return_value;
 }

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "md4.h"
 
 #define SAFETY_CODE_LENGTH          8U
 #define PDU_FIXED_FIELDS_LENGTH     36U
@@ -17,12 +18,19 @@
 #define SENDER_ID   0x00000000U
 #define RECEIVER_ID 0x00000000U
 
-#define PROTOCOL_VERSION    0x30333031U /* Protocol version, for which all 4 bytes are decimal digits in ASCII, 
+#define PROTOCOL_VERSION    0x30333031 /* Protocol version, for which all 4 bytes are decimal digits in ASCII, 
                                         e. g.: “0301” = 0x30 0x33 0x30 0x31 = Version 03.01 */
+
+#define N_SEND_MAX  0xFFFFU
+
+#define NO_DETAILED_REASON 0x0000U
 
 #define SHIFT_1_BYTES  8U
 #define SHIFT_2_BYTES  16U
 #define SHIFT_3_BYTES  24U
+
+/* State machine context structure */
+typedef struct SmType SmType;
 
 /* Enum for message types */
 typedef enum {
@@ -69,7 +77,7 @@ typedef enum {
  * @param[out]  buffer      Buffer that will be serialized with PDU_S structure.
  * @param[in]   buffer_size The size of the buffer (PDU_FIXED_FIELDS_LENGTH + payload length). Payload length depends on message type.
  */
-void serialize_pdu(PDU_S *pdu, uint8_t *buffer, const size_t buffer_size);
+void serialize_pdu(const PDU_S pdu, uint8_t *buffer, const size_t buffer_size);
 
 /**
  * @brief Deserialize data in to the PDU structure from a buffer with serialized data.
@@ -78,50 +86,62 @@ void serialize_pdu(PDU_S *pdu, uint8_t *buffer, const size_t buffer_size);
  * @param[in]   buffer_size The size of the buffer (PDU_FIXED_FIELDS_LENGTH + payload length). Payload length depends on message type. 
  * @param[out]  pdu         Protocol Data Unit (PDU_S) structure.
  */
-void deserialize_pdu(uint8_t *buffer, const size_t buffer_size, PDU_S *pdu);
+void deserialize_pdu(const uint8_t *buffer, const size_t buffer_size, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Connection Request.
  * 
- * @param[out]  ret_pdu     The returned Connection Request PDU.
+ * @param[in]   self    State machine context structure.   
+ *  
+ * @return  Returns a Connection Request PDU.
  */
-void ConnReq(PDU_S *ret_pdu);
+PDU_S ConnReq(SmType self);
 
 /**
  * @brief Create PDU for Connection Response.
  * 
- * @param[out]  ret_pdu     The returned Connection Response PDU.
+ * @param[in]   self    State machine context structure. 
+ *  
+ * @return  Returns a Connection Response PDU.
  */
-void ConnResp(PDU_S *ret_pdu);
+PDU_S ConnResp(SmType self);
 
 /**
  * @brief Create PDU for Retransmission Request.
  * 
- * @param[out]  ret_pdu     The returned Retransmission Request PDU.
+ * @param[in]   self    State machine context structure.  
+ * 
+ * @return  Returns a Retransmission Request PDU.
  */
-void RetrReq(PDU_S *ret_pdu);
+PDU_S RetrReq(SmType self);
 
 /**
  * @brief Create PDU for Retransmission Response.
  * 
- * @param[out]  ret_pdu     The returned Retransmission Response PDU.
+ * @param[in]   self    State machine context structure.
+ * 
+ * @return  Returns a Retransmission Response PDU.
  */
-void RetrResp(PDU_S *ret_pdu);
+PDU_S RetrResp(SmType self);
 
 /**
  * @brief Create PDU for Disconnection Request.
  * 
- * @param[in]   discReason  Disconnection reason.
- * @param[out]  ret_pdu     The returned Disconnection Request PDU.
+ * @param[in]   discReason      Disconnection reason.
+ * @param[in]   detailedReason  If user request disconnection, then a detail about disconnection should be passed.
+ * @param[in]   self            State machine context structure.  
+ * 
+ * @return  Returns a Disconnection Request PDU.
  */
-void DiscReq(DiscReasonType discReason, PDU_S *ret_pdu);
-
+PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType self);
 
 /**
  * @brief Create PDU for Heartbeat.
   * 
- * @param[out]  ret_pdu     The returned Heartbeat PDU.
+ * @param[in]   self    State machine context structure.  
+ * 
+ * @return  Returns a Heartbeat PDU.
  */
-void HB(PDU_S *ret_pdu);
+PDU_S HB(SmType self);
 
 #endif // PDU_H

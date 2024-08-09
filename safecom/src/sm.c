@@ -6,18 +6,21 @@
 static void set_initial_values(SmType *self);
 static void close_connection(SmType *self);
 static void process_regular_receipt(SmType *self);
-static void handle_closed(SmType *self, Event event, PDU_S *pdu);
-static void handle_down(SmType *self, Event event, PDU_S *pdu);
-static void handle_start(SmType *self, Event event, PDU_S *pdu);
-static void handle_up(SmType *self, Event event, PDU_S *pdu);
-static void handle_retr_req(SmType *self, Event event, PDU_S *pdu);
-static void handle_retr_run(SmType *self, Event event, PDU_S *pdu);
+static void handle_closed(SmType *self, const Event event, const PDU_S recv_pdu);
+static void handle_down(SmType *self, const Event event, const PDU_S recv_pdu);
+static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu);
+static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu);
+static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pdu);
+static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pdu);
 static bool check_seq_confirmed_timestamp(SmType *self);
-static bool check_version(PDU_S pdu);
+static bool check_version(const PDU_S recv_pdu);
 
 static bool check_seq_confirmed_timestamp(SmType *self)
 {
+    assert(self != NULL);
+
     bool ret = false;
+
     /* TODO: RTR - Define TMAX */
     if(((self->ctspdu - self->ctsr) >= 0) && ((self->ctspdu - self->ctsr) < TMAX))
     {
@@ -30,8 +33,10 @@ static bool check_seq_confirmed_timestamp(SmType *self)
     return ret;
 }
 
-static bool check_version(PDU_S pdu)
+static bool check_version(const PDU_S pdu)
 {
+    assert(pdu.payload != NULL);
+    
     if ((pdu.payload[0] == ((PROTOCOL_VERSION >> SHIFT_3_BYTES) & 0xFF)) &&
         (pdu.payload[1] == ((PROTOCOL_VERSION >> SHIFT_2_BYTES) & 0xFF)) &&
         (pdu.payload[2] == ((PROTOCOL_VERSION >> SHIFT_1_BYTES) & 0xFF)) &&
@@ -62,13 +67,6 @@ static void set_initial_values(SmType *self)
     self->tspdu = 0;
 }
 
-static void close_connection(SmType *self)
-{
-    assert(self != NULL);
-    self->cst = self->snpdu;
-    self->state = STATE_CLOSED;
-}
-
 static void process_regular_receipt(SmType *self)
 {
     assert(self != NULL);
@@ -79,16 +77,31 @@ static void process_regular_receipt(SmType *self)
     self->ctsr = self->cspdu;
 }
 
-static void handle_closed(SmType *self, Event event, PDU_S *pdu)
+static void handle_closed(SmType *self, const Event event, const PDU_S recv_pdu)
 {
     assert(self != NULL);
-    UNUSED(pdu);
+    UNUSED(recv_pdu);
+
+    PDU_S pdu_to_send = { 0 };
 
     switch (event) {
         case EVENT_OPEN_CONN:
-            set_initial_values(self);
-            self->snt = rand(); /* Random value for SNT */
-            self->state = STATE_DOWN;
+            if(self->role == ROLE_SERVER)
+            {
+                self->snt = rand(); /* Random value for SNT */
+                self->state = STATE_DOWN;
+            }
+            else if(self->role == ROLE_CLIENT)
+            {
+                self->snt = rand(); /* Random value for SNT */
+                self->cst = 0;
+                self->ctsr = 0; /* TODO: RTR - Tlocal */
+
+                pdu_to_send = ConnReq(*self);
+                /* TODO: RTR - Send ConnReq */
+
+                self->state = STATE_START;
+            }
             break;
         default:
             /* No action for other events in STATE_CLOSED */
@@ -96,7 +109,7 @@ static void handle_closed(SmType *self, Event event, PDU_S *pdu)
     }
 }
 
-static void handle_down(SmType *self, Event event, PDU_S *pdu)
+static void handle_down(SmType *self, const Event event, const PDU_S recv_pdu)
 {
     assert(self != NULL);
 
@@ -110,20 +123,20 @@ static void handle_down(SmType *self, Event event, PDU_S *pdu)
             break;
 
         case EVENT_RECV_CONN_REQ:
-            if (check_version(*pdu)) 
+            if (check_version(recv_pdu)) 
             {
                 self->csr = self->snt - 1;
                 self->ctsr = 0; /* TODO: RTR - Tlocal */
                 self->state = STATE_START;
 
-                ConnResp(&pdu_to_send);
+                pdu_to_send = ConnResp(*self);
                 /* TODO: RTR - Send ConnResp */
             }
             else
             {
                 close_connection(self);
 
-                DiscReq(6, &pdu_to_send);
+                pdu_to_send = DiscReq(6, NO_DETAILED_REASON, *self);
                 /* TODO: RTR - Send DiscReq(6) */
             }
             break;
@@ -133,18 +146,18 @@ static void handle_down(SmType *self, Event event, PDU_S *pdu)
     }
 }
 
-static void handle_start(SmType *self, Event event, PDU_S *pdu)
+static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
 {
     assert(self != NULL);
 
-    PDU_S pdu_to_send;
+    PDU_S pdu_to_send = { 0 };
 
     switch (event) {
         case EVENT_OPEN_CONN:
         case EVENT_SEND_DATA:
             close_connection(self);
 
-            DiscReq(5, &pdu_to_send);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(5) */
             break;
 
@@ -155,14 +168,14 @@ static void handle_start(SmType *self, Event event, PDU_S *pdu)
         case EVENT_RECV_RETR_DATA:
             close_connection(self);
 
-            DiscReq(2, &pdu_to_send);
+            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(2) */
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            DiscReq(0, &pdu_to_send);
+            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(0) */
             break;
 
@@ -172,23 +185,23 @@ static void handle_start(SmType *self, Event event, PDU_S *pdu)
             {
                 close_connection(self);
 
-                DiscReq(5, &pdu_to_send);
+                pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
                 /* TODO: RTR - Send DiscReq(2) */
             }
             else if (self->role == ROLE_CLIENT)
             {
-                if (check_version(*pdu)) 
+                if (check_version(recv_pdu)) 
                 {
                     self->state = STATE_UP;
 
-                    HB(&pdu_to_send);
+                    pdu_to_send = HB(*self);
                     /* TODO: RTR - Send HB */
                 }
                 else
                 {
                     close_connection(self);
 
-                    DiscReq(6, &pdu_to_send);
+                    pdu_to_send = DiscReq(6, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(6) */
                 }
             }
@@ -214,7 +227,7 @@ static void handle_start(SmType *self, Event event, PDU_S *pdu)
                         {
                             close_connection(self);
 
-                            DiscReq(8, &pdu_to_send);
+                            pdu_to_send = DiscReq(8, NO_DETAILED_REASON, *self);
                             /* TODO: RTR - Send DiscReq(8) */
                         }
                     }
@@ -222,7 +235,7 @@ static void handle_start(SmType *self, Event event, PDU_S *pdu)
                     {
                         close_connection(self);
 
-                        DiscReq(3, &pdu_to_send);
+                        pdu_to_send = DiscReq(3, NO_DETAILED_REASON, *self);
                         /* TODO: RTR - Send DiscReq(3) */
                     }
                 }
@@ -230,7 +243,7 @@ static void handle_start(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(2, &pdu_to_send);
+                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(2) */
                 }
             break;
@@ -241,24 +254,25 @@ static void handle_start(SmType *self, Event event, PDU_S *pdu)
     }
 }
 
-static void handle_up(SmType *self, Event event, PDU_S *pdu)
+static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
 {
     assert(self != NULL);
+    UNUSED(recv_pdu);
     
-    PDU_S pdu_to_send;
+    PDU_S pdu_to_send = { 0 };
 
     switch (event) {
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            DiscReq(5, &pdu_to_send);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(5) */
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            DiscReq(0, &pdu_to_send);
+            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(0) */
             break;
 
@@ -272,7 +286,7 @@ static void handle_up(SmType *self, Event event, PDU_S *pdu)
         case EVENT_RECV_RETR_DATA:
             close_connection(self);
 
-            DiscReq(2, &pdu_to_send);
+            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(2) */
             break;
 
@@ -295,7 +309,7 @@ static void handle_up(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(7, &pdu_to_send);
+                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -311,7 +325,7 @@ static void handle_up(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(7, &pdu_to_send);
+                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -330,7 +344,7 @@ static void handle_up(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(8, &pdu_to_send);
+                    pdu_to_send = DiscReq(8, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(8) */
                 }
             }
@@ -338,7 +352,7 @@ static void handle_up(SmType *self, Event event, PDU_S *pdu)
             {
                 self->state = STATE_RETR_REQ;
 
-                RetrReq(&pdu_to_send);
+                pdu_to_send = RetrReq(*self);
                 /* TODO: RTR - Send RetrReq */
             }
             break;
@@ -356,7 +370,7 @@ static void handle_up(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(8, &pdu_to_send);
+                    pdu_to_send = DiscReq(8, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(8) */
                 }
             }
@@ -364,7 +378,7 @@ static void handle_up(SmType *self, Event event, PDU_S *pdu)
             {
                 self->state = STATE_RETR_REQ;
                 
-                RetrReq(&pdu_to_send);
+                pdu_to_send = RetrReq(*self);
                 /* TODO: RTR - Send RetrReq */
             }
             break;
@@ -374,24 +388,25 @@ static void handle_up(SmType *self, Event event, PDU_S *pdu)
     }
 }
 
-static void handle_retr_req(SmType *self, Event event, PDU_S *pdu)
+static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pdu)
 {
     assert(self != NULL);
+    UNUSED(recv_pdu);
     
-    PDU_S pdu_to_send;
+    PDU_S pdu_to_send = { 0 };
 
     switch (event) {
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            DiscReq(5, &pdu_to_send);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(5) */
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            DiscReq(0, &pdu_to_send);
+            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(0) */
             break;
 
@@ -399,7 +414,7 @@ static void handle_retr_req(SmType *self, Event event, PDU_S *pdu)
         case EVENT_RECV_CONN_RESP:
             close_connection(self);
 
-            DiscReq(2, &pdu_to_send);
+            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(2) */
             break;
 
@@ -422,7 +437,7 @@ static void handle_retr_req(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(7, &pdu_to_send);
+                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -438,7 +453,7 @@ static void handle_retr_req(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(7, &pdu_to_send);
+                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -465,24 +480,25 @@ static void handle_retr_req(SmType *self, Event event, PDU_S *pdu)
     }
 }
 
-static void handle_retr_run(SmType *self, Event event, PDU_S *pdu)
+static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pdu)
 {
     assert(self != NULL);
+    UNUSED(recv_pdu);
     
-    PDU_S pdu_to_send;
+    PDU_S pdu_to_send = { 0 };
 
     switch (event) {
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            DiscReq(5, &pdu_to_send);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(5) */
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            DiscReq(0, &pdu_to_send);
+            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(0) */
             break;
 
@@ -496,7 +512,7 @@ static void handle_retr_run(SmType *self, Event event, PDU_S *pdu)
         case EVENT_RECV_RETR_RESP:
             close_connection(self);
 
-            DiscReq(5, &pdu_to_send);
+            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, *self);
             /* TODO: RTR - Send DiscReq(2) */
             break;
 
@@ -510,7 +526,7 @@ static void handle_retr_run(SmType *self, Event event, PDU_S *pdu)
             {
                 close_connection(self);
 
-                DiscReq(2, &pdu_to_send);
+                pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
                 /* TODO: RTR - Send DiscReq(2) */
             }
             else
@@ -526,7 +542,7 @@ static void handle_retr_run(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(2, &pdu_to_send);
+                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(7) */
                 }
             }
@@ -547,7 +563,7 @@ static void handle_retr_run(SmType *self, Event event, PDU_S *pdu)
                 {
                     close_connection(self);
 
-                    DiscReq(2, &pdu_to_send);
+                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
                     /* TODO: RTR - Send DiscReq(8) */
                 }
             }
@@ -555,7 +571,7 @@ static void handle_retr_run(SmType *self, Event event, PDU_S *pdu)
             {
                 self->state = STATE_RETR_REQ;
 
-                RetrReq(&pdu_to_send);
+                pdu_to_send = RetrReq(*self);
                 /* TODO: RTR - Send RetrReq */
             }
             break;
@@ -566,12 +582,22 @@ static void handle_retr_run(SmType *self, Event event, PDU_S *pdu)
     }
 }
 
+static void close_connection(SmType *self)
+{
+    assert(self != NULL);
+    self->cst = self->snpdu;
+    self->state = STATE_CLOSED;
+    self->handle_event = handle_closed;
+}
+
 /* Public functions */
 StdRet_t Sm_Init (SmType *self)
 {
     assert(self != NULL);
 
     StdRet_t ret = OK;
+
+    set_initial_values(self);
     
     self->handle_event = handle_closed; /* Initial state handler */
 
@@ -580,7 +606,7 @@ StdRet_t Sm_Init (SmType *self)
     return ret;
 }
 
-void Sm_HandleEvent(SmType *self, Event event, PDU_S *pdu)
+void Sm_HandleEvent(SmType *self, const Event event, const PDU_S recv_pdu)
 {
     assert(self != NULL);
 
@@ -588,7 +614,7 @@ void Sm_HandleEvent(SmType *self, Event event, PDU_S *pdu)
 
     LOG_INFO("connection: %i, state: %i", self->channel, self->state);
     /* Delegate the event handling to the appropriate state handler */
-    self->handle_event(self, event, pdu);
+    self->handle_event(self, event, recv_pdu);
 
     LOG_INFO("connection: %i, state: %i", self->channel, self->state);
 
@@ -596,19 +622,19 @@ void Sm_HandleEvent(SmType *self, Event event, PDU_S *pdu)
     if (event == EVENT_TH_ELAPSED) {
         switch (self->state) {
             case STATE_START:
-                HB(&pdu_to_send);
+                pdu_to_send = HB(*self);
                 /* TODO: RTR - Send HB */
                 break;
             case STATE_UP:
-                HB(&pdu_to_send);
+                pdu_to_send = HB(*self);
                 /* TODO: RTR - Send HB */
                 break;
             case STATE_RETR_REQ:
-                HB(&pdu_to_send);
+                pdu_to_send = HB(*self);
                 /* TODO: RTR - Send HB */
                 break;
             case STATE_RETR_RUN:
-                HB(&pdu_to_send);
+                pdu_to_send = HB(*self);
                 /* TODO: RTR - Send HB */
                 break;
             default:
@@ -617,7 +643,7 @@ void Sm_HandleEvent(SmType *self, Event event, PDU_S *pdu)
     } else if (event == EVENT_TI_ELAPSED) {
         close_connection(self);
 
-        DiscReq(2, &pdu_to_send);
+        pdu_to_send = DiscReq(2, NO_DETAILED_REASON, *self);
         /* TODO: RTR - Send DiscReq(4) */
     }
 

@@ -38,7 +38,6 @@ StdRet_t SafeCom_ReceiveSpdu_Impl(const SafeCom* const self, const NodeId_t node
     assert(pSpduData != NULL);
     /* Implementation specific to SafeCom_ReceiveSpdu */
     self->vtable.ReceiveMsg(nodeId, spduLen, pSpduData);
-
     return INIT_RET;
 }
 
@@ -54,13 +53,16 @@ StdRet_t SafeCom_OpenConnection_Impl(const SafeCom* const self, const MsgId_t ms
     /* Implementation specific to SafeCom_OpenConnection */
     
     PDU_S recv_pdu = { 0 };
-    Sm_HandleEvent(&sms[msgId], EVENT_OPEN_CONN, &recv_pdu);
+    Sm_HandleEvent(&sms[msgId], EVENT_OPEN_CONN, recv_pdu);
     return INIT_RET;
 }
 
 StdRet_t SafeCom_CloseConnection_Impl(const SafeCom* const self, const MsgId_t msgId) {
     assert(self != NULL);
     /* Implementation specific to SafeCom_CloseConnection */
+
+    PDU_S pdu = { 0 };
+    Sm_HandleEvent(&sms[msgId], EVENT_CLOSE_CONN, pdu);
     return INIT_RET;
 }
 

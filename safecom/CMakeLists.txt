@@ -1,4 +1,5 @@
 set(LIB_NAME safecom)
+set(LINKED_LIBS mock common)
 
 option(STATIC_LIB "build static or shared lib" ON)
 message("-- library ${LIB_NAME}: STATIC_LIB=${STATIC_LIB}")
@@ -19,6 +20,7 @@ target_sources(${LIB_NAME} PRIVATE
     src/sm.c)
 
 target_include_directories(${LIB_NAME} PRIVATE src)
+target_link_libraries(${LIB_NAME} ${LINKED_LIBS})
 
 # Additional properties.
 #set_property(TARGET ${LIB_NAME} PROPERTY COMPILE_WARNING_AS_ERROR ON)
