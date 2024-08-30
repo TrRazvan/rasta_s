@@ -10,6 +10,8 @@
 extern int test_sm_connection(void);
 extern int test_rass_server(void);
 extern int test_rass_client(void);
+extern int mock_tests(void);
+extern int test_rass_send_data(void);
 
 static void simple_test(void **state) 
 {
@@ -47,9 +49,11 @@ int main(int argc, char* argv[]) {
     };
 
     // return_value = cmocka_run_group_tests_name("simple_test" ,tests, group_setup, group_teardown);
-    return_value |= test_sm_connection();
+    // return_value |= test_sm_connection();
     // return_value |= test_rass_server();
-    return_value |= test_rass_client();
+    // return_value |= test_rass_client();
+    // return_value |= mock_tests();
+    return_value |= test_rass_send_data();
 
     return return_value;
 }

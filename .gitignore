@@ -7,6 +7,9 @@ _*
 # build folder
 build/*
 
+# cmocka folder
+cmocka/*
+
 # Prerequisites
 *.d
 

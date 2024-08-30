@@ -1,19 +1,22 @@
 #include "sm.h"
 #include "assert.h"
 #include "log.h"
+#include "rass.h"
+
+extern SafeComVtable globalVtable;
 
 /* Private function prototypes */
 static void set_initial_values(SmType *self);
 static void close_connection(SmType *self);
 static void process_regular_receipt(SmType *self);
-static void handle_closed(SmType *self, const Event event, const PDU_S recv_pdu);
-static void handle_down(SmType *self, const Event event, const PDU_S recv_pdu);
-static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu);
-static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu);
-static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pdu);
-static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pdu);
+static void handle_closed(SmType *self, const Event event, const PDU_S *pdu);
+static void handle_down(SmType *self, const Event event, const PDU_S *pdu);
+static void handle_start(SmType *self, const Event event, const PDU_S *pdu);
+static void handle_up(SmType *self, const Event event, const PDU_S *pdu);
+static void handle_retr_req(SmType *self, const Event event, const PDU_S *pdu);
+static void handle_retr_run(SmType *self, const Event event, const PDU_S *pdu);
 static bool check_seq_confirmed_timestamp(SmType *self);
-static bool check_version(const PDU_S recv_pdu);
+static bool check_version(const PDU_S *recv_pdu);
 
 static bool check_seq_confirmed_timestamp(SmType *self)
 {
@@ -33,14 +36,14 @@ static bool check_seq_confirmed_timestamp(SmType *self)
     return ret;
 }
 
-static bool check_version(const PDU_S pdu)
+static bool check_version(const PDU_S *recv_pdu)
 {
-    assert(pdu.payload != NULL);
+    assert(recv_pdu->payload != NULL);
     
-    if ((pdu.payload[0] == ((PROTOCOL_VERSION >> SHIFT_3_BYTES) & 0xFF)) &&
-        (pdu.payload[1] == ((PROTOCOL_VERSION >> SHIFT_2_BYTES) & 0xFF)) &&
-        (pdu.payload[2] == ((PROTOCOL_VERSION >> SHIFT_1_BYTES) & 0xFF)) &&
-        (pdu.payload[3] == (PROTOCOL_VERSION & 0xFF)))
+    if ((recv_pdu->payload[0] == ((PROTOCOL_VERSION >> SHIFT_3_BYTES) & 0xFF)) &&
+        (recv_pdu->payload[1] == ((PROTOCOL_VERSION >> SHIFT_2_BYTES) & 0xFF)) &&
+        (recv_pdu->payload[2] == ((PROTOCOL_VERSION >> SHIFT_1_BYTES) & 0xFF)) &&
+        (recv_pdu->payload[3] == (PROTOCOL_VERSION & 0xFF)))
     {
         return true;
     }
@@ -48,6 +51,12 @@ static bool check_version(const PDU_S pdu)
     {
         return false;
     }
+}
+
+static bool unconfirmed_payload_available()
+{
+    /* TODO: RTR - all unconfirmed payload data available */
+    return false;
 }
 
 /* Private functions */
@@ -77,28 +86,40 @@ static void process_regular_receipt(SmType *self)
     self->ctsr = self->cspdu;
 }
 
-static void handle_closed(SmType *self, const Event event, const PDU_S recv_pdu)
+/* Generates pseudo-random number between 0 and 100 */
+int snt_rand_value()
+{
+    static unsigned int seed = 12345;
+    seed = (seed * 1103515245 + 12345) % 101;
+
+    return seed;
+}
+
+static void handle_closed(SmType *self, const Event event, const PDU_S *pdu)
 {
     assert(self != NULL);
-    UNUSED(recv_pdu);
+    UNUSED(pdu);
 
     PDU_S pdu_to_send = { 0 };
+    uint8_t buff_to_send[MAX_BUFF_SIZE] = {0};
 
     switch (event) {
         case EVENT_OPEN_CONN:
             if(self->role == ROLE_SERVER)
             {
-                self->snt = rand(); /* Random value for SNT */
+                self->snt = snt_rand_value(); /* Random value for SNT */
                 self->state = STATE_DOWN;
             }
             else if(self->role == ROLE_CLIENT)
             {
-                self->snt = rand(); /* Random value for SNT */
+                self->snt = snt_rand_value(); /* Random value for SNT */
                 self->cst = 0;
                 self->ctsr = 0; /* TODO: RTR - Tlocal */
 
+                /* Send ConnReq */
                 pdu_to_send = ConnReq(self);
-                /* TODO: RTR - Send ConnReq */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
 
                 self->state = STATE_START;
             }
@@ -109,11 +130,12 @@ static void handle_closed(SmType *self, const Event event, const PDU_S recv_pdu)
     }
 }
 
-static void handle_down(SmType *self, const Event event, const PDU_S recv_pdu)
+static void handle_down(SmType *self, const Event event, const PDU_S *pdu)
 {
     assert(self != NULL);
 
     PDU_S pdu_to_send = { 0 };
+    uint8_t buff_to_send[MAX_BUFF_SIZE] = {0};
     
     switch (event) {
         case EVENT_OPEN_CONN:
@@ -123,21 +145,25 @@ static void handle_down(SmType *self, const Event event, const PDU_S recv_pdu)
             break;
 
         case EVENT_RECV_CONN_REQ:
-            if (check_version(recv_pdu)) 
+            if (check_version(pdu)) 
             {
                 self->csr = self->snt - 1;
                 self->ctsr = 0; /* TODO: RTR - Tlocal */
                 self->state = STATE_START;
 
+                /* Send ConnResp */
                 pdu_to_send = ConnResp(self);
-                /* TODO: RTR - Send ConnResp */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             }
             else
             {
                 close_connection(self);
 
-                pdu_to_send = DiscReq(6, NO_DETAILED_REASON, self);
-                /* TODO: RTR - Send DiscReq(6) */
+                /* Send DiscReq(6) */
+                pdu_to_send = DiscReq(PROTOCOL_VERSION_ERROR, NO_DETAILED_REASON, self);
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             }
             break;
         default:
@@ -146,19 +172,22 @@ static void handle_down(SmType *self, const Event event, const PDU_S recv_pdu)
     }
 }
 
-static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
+static void handle_start(SmType *self, const Event event, const PDU_S *pdu)
 {
     assert(self != NULL);
 
     PDU_S pdu_to_send = { 0 };
+    uint8_t buff_to_send[MAX_BUFF_SIZE] = {0};
 
     switch (event) {
         case EVENT_OPEN_CONN:
         case EVENT_SEND_DATA:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(5) */
+            /* Send DiscReq(5) */
+            pdu_to_send = DiscReq(STATE_SERVICE_NOT_ALLOWED, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_RECV_CONN_REQ:
@@ -168,15 +197,19 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
         case EVENT_RECV_RETR_DATA:
             close_connection(self);
 
-            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(2) */
+            /* Send DiscReq(2) */
+            pdu_to_send = DiscReq(NOT_EXPECTED_RECV_MSG_TYPE, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(0) */
+            /* Send DiscReq(0) */
+            pdu_to_send = DiscReq(USER_REQUEST, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
 
@@ -185,24 +218,30 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
             {
                 close_connection(self);
 
-                pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
-                /* TODO: RTR - Send DiscReq(2) */
+                /* Send DiscReq(2) */
+                pdu_to_send = DiscReq(NOT_EXPECTED_RECV_MSG_TYPE, NO_DETAILED_REASON, self);
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             }
             else if (self->role == ROLE_CLIENT)
             {
-                if (check_version(recv_pdu)) 
+                if (check_version(pdu)) 
                 {
                     self->state = STATE_UP;
 
+                    /* Send HB */
                     pdu_to_send = HB(self);
-                    /* TODO: RTR - Send HB */
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
                 else
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(6, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(6) */
+                    /* Send DiscReq(6) */
+                    pdu_to_send = DiscReq(PROTOCOL_VERSION_ERROR, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             break;
@@ -227,24 +266,30 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
                         {
                             close_connection(self);
 
-                            pdu_to_send = DiscReq(8, NO_DETAILED_REASON, self);
-                            /* TODO: RTR - Send DiscReq(8) */
+                            /* Send DiscReq(8) */
+                            pdu_to_send = DiscReq(SEQ_ERR, NO_DETAILED_REASON, self);
+                            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                         }
                     }
                     else 
                     {
                         close_connection(self);
 
-                        pdu_to_send = DiscReq(3, NO_DETAILED_REASON, self);
-                        /* TODO: RTR - Send DiscReq(3) */
+                        /* Send DiscReq(3) */
+                        pdu_to_send = DiscReq(SEQ_NBR_ERR_FOR_CONNECTION, NO_DETAILED_REASON, self);
+                        serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                        globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                     }
                 }
                 else if (self->role == ROLE_CLIENT)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(2) */
+                    /* Send DiscReq(2) */
+                    pdu_to_send = DiscReq(NOT_EXPECTED_RECV_MSG_TYPE, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             break;
 
@@ -254,30 +299,36 @@ static void handle_start(SmType *self, const Event event, const PDU_S recv_pdu)
     }
 }
 
-static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
+static void handle_up(SmType *self, const Event event, const PDU_S *pdu)
 {
     assert(self != NULL);
-    UNUSED(recv_pdu);
     
     PDU_S pdu_to_send = { 0 };
+    uint8_t buff_to_send[MAX_BUFF_SIZE] = {0};
 
     switch (event) {
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(5) */
+            /* Send DiscReq(5) */
+            pdu_to_send = DiscReq(STATE_SERVICE_NOT_ALLOWED, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(0) */
+            /* Send DiscReq(0) */
+            pdu_to_send = DiscReq(USER_REQUEST, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_SEND_DATA:
-            /* TODO: RTR - Send Data */
+            /* Send Data */
+            serialize_pdu(pdu, buff_to_send, pdu->message_length);
+            globalVtable.SendSpdu(self->channel, pdu->message_length, buff_to_send);
             break;
 
         case EVENT_RECV_CONN_REQ:
@@ -286,8 +337,10 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
         case EVENT_RECV_RETR_DATA:
             close_connection(self);
 
-            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(2) */
+            /* Send DiscReq(2) */
+            pdu_to_send = DiscReq(NOT_EXPECTED_RECV_MSG_TYPE, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_RECV_DISC_REQ:
@@ -298,8 +351,8 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
             /* Checking the sequence number SNinSeq == true */
             if (self->snr == self->snpdu)
             {
-                /* TODO: RTR - all unconfirmed payload data available */
-                if (1) 
+                /* Verify all unconfirmed payload data available */
+                if (unconfirmed_payload_available()) 
                 {
                     self->csr = self->cspdu;
                     self->state = STATE_RETR_REQ;
@@ -309,14 +362,16 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(7) */
+                    /* Send DiscReq(7) */
+                    pdu_to_send = DiscReq(FAIL_RETRANSMISSION, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             else
             {
-                /* TODO: RTR - all unconfirmed payload data available */
-                if (1) 
+                /* Verify all unconfirmed payload data available */
+                if (unconfirmed_payload_available()) 
                 {
                     self->csr = self->cspdu;
                     /* TODO: RTR - Send RetrResp, RetrData(s), HB or Data */
@@ -325,8 +380,10 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(7) */
+                    /* Send DiscReq(7) */
+                    pdu_to_send = DiscReq(FAIL_RETRANSMISSION, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             break;
@@ -344,16 +401,20 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(8, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(8) */
+                    /* Send DiscReq(8) */
+                    pdu_to_send = DiscReq(SEQ_ERR, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             else
             {
                 self->state = STATE_RETR_REQ;
 
+                /* Send RetrReq */
                 pdu_to_send = RetrReq(self);
-                /* TODO: RTR - Send RetrReq */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             }
             break;
 
@@ -370,16 +431,20 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(8, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(8) */
+                    /* Send DiscReq(8) */
+                    pdu_to_send = DiscReq(SEQ_ERR, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             else
             {
                 self->state = STATE_RETR_REQ;
                 
+                /* Send RetrReq */
                 pdu_to_send = RetrReq(self);
-                /* TODO: RTR - Send RetrReq */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             }
             break;
         default:
@@ -388,34 +453,41 @@ static void handle_up(SmType *self, const Event event, const PDU_S recv_pdu)
     }
 }
 
-static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pdu)
+static void handle_retr_req(SmType *self, const Event event, const PDU_S *pdu)
 {
     assert(self != NULL);
-    UNUSED(recv_pdu);
+    UNUSED(pdu);
     
     PDU_S pdu_to_send = { 0 };
+    uint8_t buff_to_send[MAX_BUFF_SIZE] = {0};
 
     switch (event) {
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(5) */
+            /* Send DiscReq(5) */
+            pdu_to_send = DiscReq(STATE_SERVICE_NOT_ALLOWED, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(0) */
+            /* Send DiscReq(0) */
+            pdu_to_send = DiscReq(USER_REQUEST, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_RECV_CONN_REQ:
         case EVENT_RECV_CONN_RESP:
             close_connection(self);
 
-            pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(2) */
+            /* Send DiscReq(2) */
+            pdu_to_send = DiscReq(NOT_EXPECTED_RECV_MSG_TYPE, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_RECV_DISC_REQ:
@@ -426,8 +498,8 @@ static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pd
             /* Checking the sequence number SNinSeq == true */
             if (self->snr == self->snpdu)
             {
-                /* TODO: RTR - all unconfirmed payload data available */
-                if (1) 
+                /* Verify all unconfirmed payload data available */
+                if (unconfirmed_payload_available()) 
                 {
                     self->csr = self->cspdu;
                     self->state = STATE_RETR_REQ;
@@ -437,8 +509,10 @@ static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pd
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(7) */
+                    /* Send DiscReq(7) */
+                    pdu_to_send = DiscReq(FAIL_RETRANSMISSION, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             else
@@ -453,15 +527,19 @@ static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pd
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(7, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(7) */
+                    /* Send DiscReq(7) */
+                    pdu_to_send = DiscReq(FAIL_RETRANSMISSION, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             break;
 
         case EVENT_SEND_DATA:
             self->state = STATE_RETR_REQ;
-            /* TODO: RTR - Send Data */
+            /* Send Data */
+            serialize_pdu(pdu, buff_to_send, pdu->message_length);
+            globalVtable.SendSpdu(self->channel, pdu->message_length, buff_to_send);
             break;
 
         case EVENT_RECV_RETR_RESP:
@@ -480,31 +558,38 @@ static void handle_retr_req(SmType *self, const Event event, const PDU_S recv_pd
     }
 }
 
-static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pdu)
+static void handle_retr_run(SmType *self, const Event event, const PDU_S *pdu)
 {
     assert(self != NULL);
-    UNUSED(recv_pdu);
+    UNUSED(pdu);
     
     PDU_S pdu_to_send = { 0 };
+    uint8_t buff_to_send[MAX_BUFF_SIZE] = {0};
 
     switch (event) {
         case EVENT_OPEN_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(5) */
+            /* Send DiscReq(5) */
+            pdu_to_send = DiscReq(STATE_SERVICE_NOT_ALLOWED, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_CLOSE_CONN:
             close_connection(self);
 
-            pdu_to_send = DiscReq(0, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(0) */
+            /* Send DiscReq(0) */
+            pdu_to_send = DiscReq(USER_REQUEST, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_SEND_DATA:
             self->state = STATE_RETR_RUN;
-            /* TODO: RTR - Send Data */
+            /* Send Data */
+            serialize_pdu(pdu, buff_to_send, pdu->message_length);
+            globalVtable.SendSpdu(self->channel, pdu->message_length, buff_to_send);
             break;
 
         case EVENT_RECV_CONN_REQ:
@@ -512,8 +597,10 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
         case EVENT_RECV_RETR_RESP:
             close_connection(self);
 
-            pdu_to_send = DiscReq(5, NO_DETAILED_REASON, self);
-            /* TODO: RTR - Send DiscReq(2) */
+            /* Send DiscReq(2) */
+            pdu_to_send = DiscReq(NOT_EXPECTED_RECV_MSG_TYPE, NO_DETAILED_REASON, self);
+            serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+            globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             break;
 
         case EVENT_RECV_DISC_REQ:
@@ -526,13 +613,15 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
             {
                 close_connection(self);
 
-                pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
-                /* TODO: RTR - Send DiscReq(2) */
+                /* Send DiscReq(2) */
+                pdu_to_send = DiscReq(NOT_EXPECTED_RECV_MSG_TYPE, NO_DETAILED_REASON, self);
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             }
             else
             {
-                /* TODO: RTR - all unconfirmed payload data available */
-                if (1)
+                /* Verify all unconfirmed payload data available */
+                if (unconfirmed_payload_available()) 
                 {
                     self->csr = self->cspdu;
                     self->state = STATE_RETR_REQ;
@@ -542,8 +631,10 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(7) */
+                    /* Send DiscReq(7) */
+                    pdu_to_send = DiscReq(FAIL_RETRANSMISSION, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             break;
@@ -563,16 +654,20 @@ static void handle_retr_run(SmType *self, const Event event, const PDU_S recv_pd
                 {
                     close_connection(self);
 
-                    pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
-                    /* TODO: RTR - Send DiscReq(8) */
+                    /* Send DiscReq(8) */
+                    pdu_to_send = DiscReq(SEQ_ERR, NO_DETAILED_REASON, self);
+                    serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                    globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 }
             }
             else
             {
                 self->state = STATE_RETR_REQ;
 
+                /* Send RetrReq */
                 pdu_to_send = RetrReq(self);
-                /* TODO: RTR - Send RetrReq */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
             }
             break;
 
@@ -606,45 +701,62 @@ StdRet_t Sm_Init (SmType *self)
     return ret;
 }
 
-void Sm_HandleEvent(SmType *self, const Event event, const PDU_S recv_pdu)
+void Sm_HandleEvent(SmType *self, const Event event, const PDU_S *pdu)
 {
     assert(self != NULL);
 
     PDU_S pdu_to_send = { 0 };
+    uint8_t buff_to_send[MAX_BUFF_SIZE] = {0};
 
     LOG_INFO("connection: %i, state: %i", self->channel, self->state);
     /* Delegate the event handling to the appropriate state handler */
-    self->handle_event(self, event, recv_pdu);
+    self->handle_event(self, event, pdu);
 
     LOG_INFO("connection: %i, state: %i", self->channel, self->state);
 
     /* Additional event handling for timer events */
-    if (event == EVENT_TH_ELAPSED) {
-        switch (self->state) {
+    if (event == EVENT_TH_ELAPSED) 
+    {
+        switch (self->state) 
+        {
             case STATE_START:
+                /* Send HB */
                 pdu_to_send = HB(self);
-                /* TODO: RTR - Send HB */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 break;
+
             case STATE_UP:
+                /* Send HB */
                 pdu_to_send = HB(self);
-                /* TODO: RTR - Send HB */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 break;
+
             case STATE_RETR_REQ:
+                /* Send HB */
                 pdu_to_send = HB(self);
-                /* TODO: RTR - Send HB */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 break;
+
             case STATE_RETR_RUN:
+                /* Send HB */
                 pdu_to_send = HB(self);
-                /* TODO: RTR - Send HB */
+                serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+                globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
                 break;
+
             default:
                 break;
         }
     } else if (event == EVENT_TI_ELAPSED) {
         close_connection(self);
 
-        pdu_to_send = DiscReq(2, NO_DETAILED_REASON, self);
-        /* TODO: RTR - Send DiscReq(4) */
+        /* Send DiscReq(4) */
+        pdu_to_send = DiscReq(TIMEOUT_INCOMING_MSG, NO_DETAILED_REASON, self);
+        serialize_pdu(&pdu_to_send, buff_to_send, pdu_to_send.message_length);
+        globalVtable.SendSpdu(self->channel, pdu_to_send.message_length, buff_to_send);
     }
 
     /* Update state handler */

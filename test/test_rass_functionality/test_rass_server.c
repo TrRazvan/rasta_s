@@ -68,7 +68,7 @@ static int setup_conn_req(void **state)
         return_value = -1;
     }
 
-    *p = ConnReq(sms[0]);
+    *p = ConnReq(&sms[0]);
     *state = p;
 
     return return_value;
@@ -81,7 +81,7 @@ static int setup_hb(void **state)
     if (p == NULL) {
         return_value = -1;
     }
-    *p = HB(sms[0]);
+    *p = HB(&sms[0]);
     *state = p;
 
    return return_value;
@@ -122,7 +122,7 @@ static void test_rass_server_receive_spdu(void **state)
     StdRet_t ret = OK;
     uint8_t buffer[50];
 
-    serialize_pdu(*pPdu, buffer, pPdu->message_length);
+    serialize_pdu(pPdu, buffer, pPdu->message_length);
     ret = Rass_ReceiveSpdu(0, pPdu->message_length, buffer);
     assert_true(ret == OK);
 
@@ -173,7 +173,7 @@ static StdRet_t My_ReceiveSpdu(const MsgId_t msgId, const MsgLen_t msgLen, const
 
     PDU_S pdu = { 0 };
     deserialize_pdu(pMsgData, msgLen, &pdu);
-    Sm_HandleEvent(&sms[msgId], pdu.message_type, pdu);
+    Sm_HandleEvent(&sms[msgId], pdu.message_type, &pdu);
     
     return ret;
 }

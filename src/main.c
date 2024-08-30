@@ -16,6 +16,7 @@ static StdRet_t My_Fec_ReceiveBtp(const MsgId_t msgId, const MsgLen_t msgLen, co
 static StdRet_t My_IscDispApp_SendSpdu(const NodeId_t nodeId, const SpduLen_t spduLen, const uint8_t* const pSpduData) {
     assert(pSpduData != NULL);
     /* Implementation of IscDispApp_SendSpdu */
+    printf("[My_Isc_SendSpdu]\n");
     return OK;
 }
 
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]) {
                                         .sms=sms}; 
 
     const SafeComVtable vtable = { .ReceiveMsg=My_Fec_ReceiveBtp, .SendSpdu=My_IscDispApp_SendSpdu};
+
     SafeComType config = { .vtable = vtable, 
                             .config = (argc==2 && (strcmp("server", argv[1])==0)) ? config_server : config_client };
 
@@ -44,5 +46,4 @@ int main(int argc, char* argv[]) {
     }
 
     Rass_OpenConnection(0);
-
 }

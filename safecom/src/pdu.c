@@ -133,6 +133,19 @@ static uint8_t *HBPayload()
     return NULL;
 }
 
+/* Create payload for Data */
+static uint8_t *DataPayload(const uint8_t msgSize, const uint8_t *pMsgData)
+{
+    static uint8_t buffer[DISC_REQ_PAYLOAD_LENGTH];
+    
+    for (uint8_t i = 0; i < msgSize; i++)
+    {
+        buffer[i] = pMsgData[i];
+    }
+    
+    return buffer;
+}
+
 /* Calculate security code of a RaSTA telegram */
 static void calculate_MD4(PDU_S *pdu)
 {
@@ -145,7 +158,7 @@ static void calculate_MD4(PDU_S *pdu)
     uint8_t safety_code[16];
 
     /* Serialize data without safety code */
-    serialize_pdu(*pdu, buffer, pdu->message_length);
+    serialize_pdu(pdu, buffer, pdu->message_length);
 
     MD4_Init(&ctx);
 	MD4_Update(&ctx, buffer, pdu->message_length - SAFETY_CODE_LENGTH);
@@ -155,40 +168,40 @@ static void calculate_MD4(PDU_S *pdu)
 }
 
 /* Serialize fields in to a buffer with data from PDU structure */
-void serialize_pdu(const PDU_S pdu, uint8_t *buffer, const size_t buffer_size) 
+void serialize_pdu(const PDU_S *pdu, uint8_t *buffer, const size_t buffer_size) 
 {
-    // assert(pdu != NULL);
+    assert(pdu != NULL);
     assert(buffer != NULL);
     
-    if (buffer_size < pdu.message_length) {
+    if (buffer_size < pdu->message_length) {
         return;
     }
 
     size_t offset = 0;
 
     /* Serialize fixed fields */
-    write_uint16(buffer, &offset, pdu.message_length);
-    write_uint16(buffer, &offset, pdu.message_type);
-    write_uint32(buffer, &offset, pdu.receiver_id);
-    write_uint32(buffer, &offset, pdu.sender_id);
-    write_uint32(buffer, &offset, pdu.sequence_number);
-    write_uint32(buffer, &offset, pdu.confirmed_sequence_number);
-    write_uint32(buffer, &offset, pdu.timestamp);
-    write_uint32(buffer, &offset, pdu.confirmed_timestamp);
+    write_uint16(buffer, &offset, pdu->message_length);
+    write_uint16(buffer, &offset, pdu->message_type);
+    write_uint32(buffer, &offset, pdu->receiver_id);
+    write_uint32(buffer, &offset, pdu->sender_id);
+    write_uint32(buffer, &offset, pdu->sequence_number);
+    write_uint32(buffer, &offset, pdu->confirmed_sequence_number);
+    write_uint32(buffer, &offset, pdu->timestamp);
+    write_uint32(buffer, &offset, pdu->confirmed_timestamp);
 
     /* Serialize payload */
-    if (pdu.payload != NULL) {
-        size_t payload_length = pdu.message_length - PDU_FIXED_FIELDS_LENGTH;
+    if (pdu->payload != NULL) {
+        size_t payload_length = pdu->message_length - PDU_FIXED_FIELDS_LENGTH;
         assert(payload_length >= 0);  /* Ensure payload length is valid */
         for (size_t i = 0; i < payload_length; ++i) {
-            buffer[offset++] = pdu.payload[i];
+            buffer[offset++] = pdu->payload[i];
         }
     }
 
     /* Serialize safety code */
-    if (pdu.safety_code != NULL) {
+    if (pdu->safety_code != NULL) {
         for (size_t i = 0; i < SAFETY_CODE_LENGTH; ++i) {
-            buffer[offset++] = pdu.safety_code[i];
+            buffer[offset++] = pdu->safety_code[i];
         }
     }
 }
@@ -235,7 +248,7 @@ PDU_S ConnReq(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
-    ret_pdu.message_length = 50;
+    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH + CONN_REQ_PAYLOAD_LENGTH;
     ret_pdu.message_type = CONNECTION_REQUEST;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
@@ -256,7 +269,7 @@ PDU_S ConnResp(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
-    ret_pdu.message_length = 50;
+    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH + CONN_RESP_PAYLOAD_LENGTH;
     ret_pdu.message_type = CONNECTION_RESPONSE;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
@@ -277,7 +290,7 @@ PDU_S RetrReq(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
-    ret_pdu.message_length = 36;
+    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH;
     ret_pdu.message_type = RETRANSMISSION_REQUEST;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
@@ -298,7 +311,7 @@ PDU_S RetrResp(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
-    ret_pdu.message_length = 36;
+    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH;
     ret_pdu.message_type = RETRANSMISSION_RESPONSE;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
@@ -319,7 +332,7 @@ PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType *self)
 {
     PDU_S ret_pdu = {0};
 
-    ret_pdu.message_length = 40;
+    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH + DISC_REQ_PAYLOAD_LENGTH;
     ret_pdu.message_type = DISCONNECTION_REQUEST;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
@@ -340,7 +353,7 @@ PDU_S HB(SmType *self)
 {
     PDU_S ret_pdu = {0};
 
-    ret_pdu.message_length = 36;
+    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH;
     ret_pdu.message_type = HEARTBEAT;
     ret_pdu.receiver_id = RECEIVER_ID;
     ret_pdu.sender_id = SENDER_ID;
@@ -349,6 +362,27 @@ PDU_S HB(SmType *self)
     ret_pdu.timestamp = GetCurrentTimestamp();
     ret_pdu.confirmed_timestamp = self->ctspdu;
     ret_pdu.payload = HBPayload();
+
+    /* Calculate the safety code with MD4 protocol */
+    calculate_MD4(&ret_pdu);
+
+    return ret_pdu;
+}
+
+/* Create PDU for Data */
+PDU_S Data(SmType *self, const uint8_t msgLen, const uint8_t *pMsgData)
+{
+    PDU_S ret_pdu = {0};
+
+    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH + msgLen;
+    ret_pdu.message_type = DATA;
+    ret_pdu.receiver_id = RECEIVER_ID;
+    ret_pdu.sender_id = SENDER_ID;
+    ret_pdu.sequence_number = self->snpdu;
+    ret_pdu.confirmed_sequence_number = self->cspdu;
+    ret_pdu.timestamp = GetCurrentTimestamp();
+    ret_pdu.confirmed_timestamp = self->ctspdu;
+    ret_pdu.payload = DataPayload(msgLen, pMsgData);
 
     /* Calculate the safety code with MD4 protocol */
     calculate_MD4(&ret_pdu);

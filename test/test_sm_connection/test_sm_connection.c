@@ -36,7 +36,7 @@ static void test_sm_client_init_to_open(void** state)
     test_sm_client_init(state);
     assert_true(sm_client.state==STATE_CLOSED);
 
-    Sm_HandleEvent(&sm_client, EVENT_OPEN_CONN, pdu);
+    Sm_HandleEvent(&sm_client, EVENT_OPEN_CONN, &pdu);
     assert_true(sm_client.state==STATE_START);
 }
 
@@ -56,7 +56,7 @@ static void test_sm_server_init_to_open(void** state)
     test_sm_server_init(state);
     assert_true(sm_server.state==STATE_CLOSED);
 
-    Sm_HandleEvent(&sm_server, EVENT_OPEN_CONN, pdu);
+    Sm_HandleEvent(&sm_server, EVENT_OPEN_CONN, &pdu);
     assert_true(sm_server.state==STATE_DOWN);
 }
 
@@ -64,9 +64,9 @@ static void test_sm_server_conn_req(void** state)
 {
     PDU_S pdu = { 0 };
 
-    pdu = ConnReq(sm_server);
+    pdu = ConnReq(&sm_server);
 
-    Sm_HandleEvent(&sm_server, EVENT_RECV_CONN_REQ, pdu);
+    Sm_HandleEvent(&sm_server, EVENT_RECV_CONN_REQ, &pdu);
     assert_true(sm_server.state==STATE_START);
 }
 
@@ -74,9 +74,9 @@ static void test_sm_client_conn_resp(void** state)
 {
     PDU_S pdu = { 0 };
 
-    pdu = ConnResp(sm_client);
+    pdu = ConnResp(&sm_client);
 
-    Sm_HandleEvent(&sm_client, EVENT_RECV_CONN_RESP, pdu);
+    Sm_HandleEvent(&sm_client, EVENT_RECV_CONN_RESP, &pdu);
     assert_true(sm_client.state==STATE_UP);
 }
 
@@ -84,9 +84,9 @@ static void test_sm_server_heartbeat(void** state)
 {
     PDU_S pdu = { 0 };
 
-    pdu = HB(sm_server);
+    pdu = HB(&sm_server);
 
-    Sm_HandleEvent(&sm_server, EVENT_RECV_HB, pdu);
+    Sm_HandleEvent(&sm_server, EVENT_RECV_HB, &pdu);
     assert_true(sm_server.state==STATE_UP);
 }
 
@@ -94,7 +94,7 @@ static void test_sm_client_close_conn(void** state)
 {
     PDU_S pdu = { 0 };
 
-    Sm_HandleEvent(&sm_client, EVENT_CLOSE_CONN, pdu);
+    Sm_HandleEvent(&sm_client, EVENT_CLOSE_CONN, &pdu);
     assert_true(sm_client.state==STATE_CLOSED);
 }
 
@@ -102,9 +102,9 @@ static void test_sm_server_disc_req(void** state)
 {
     PDU_S pdu = { 0 };
 
-    pdu = DiscReq(USER_REQUEST, NO_DETAILED_REASON, sm_server);
+    pdu = DiscReq(USER_REQUEST, NO_DETAILED_REASON, &sm_server);
 
-    Sm_HandleEvent(&sm_server, EVENT_RECV_DISC_REQ, pdu);
+    Sm_HandleEvent(&sm_server, EVENT_RECV_DISC_REQ, &pdu);
     assert_true(sm_server.state==STATE_CLOSED);
 }
 

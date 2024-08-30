@@ -18,7 +18,7 @@
 #define SENDER_ID   0x00000000U
 #define RECEIVER_ID 0x00000000U
 
-#define PROTOCOL_VERSION    0x30333031 /* Protocol version, for which all 4 bytes are decimal digits in ASCII, 
+#define PROTOCOL_VERSION    0x30333031U /* Protocol version, for which all 4 bytes are decimal digits in ASCII, 
                                         e. g.: “0301” = 0x30 0x33 0x30 0x31 = Version 03.01 */
 
 #define N_SEND_MAX  0xFFFFU
@@ -59,7 +59,7 @@ typedef struct {
 } PDU_S;
 
 typedef enum {
-    USER_REQUEST,
+    USER_REQUEST = 0U,
     UNDEFINED_MSG_TYPE_RECV,
     NOT_EXPECTED_RECV_MSG_TYPE,
     SEQ_NBR_ERR_FOR_CONNECTION,
@@ -77,7 +77,7 @@ typedef enum {
  * @param[out]  buffer      Buffer that will be serialized with PDU_S structure.
  * @param[in]   buffer_size The size of the buffer (PDU_FIXED_FIELDS_LENGTH + payload length). Payload length depends on message type.
  */
-void serialize_pdu(const PDU_S pdu, uint8_t *buffer, const size_t buffer_size);
+void serialize_pdu(const PDU_S *pdu, uint8_t *buffer, const size_t buffer_size);
 
 /**
  * @brief Deserialize data in to the PDU structure from a buffer with serialized data.
@@ -143,5 +143,16 @@ PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType *self);
  * @return  Returns a Heartbeat PDU.
  */
 PDU_S HB(SmType *self);
+
+/**
+ * @brief Create PDU for Data.
+  * 
+ * @param[in]   self        State machine context structure.  
+ * @param[in]   msgLen      The length of the data that will be transmitted.
+ * @param[in]   pMsgData    Pointer to the data that will be transmitted.
+ * 
+ * @return  Returns a Data PDU.
+ */
+PDU_S Data(SmType *self, const uint8_t msgLen, const uint8_t *pMsgData);
 
 #endif // PDU_H

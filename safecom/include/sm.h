@@ -5,8 +5,10 @@
 #include <stdbool.h>
 #include "pdu.h"
 #include "types.h"
+#include "safecom_vtable.h"
 
 #define TMAX    500U /* TODO: RTR - Define TMP_MAX */
+#define MAX_BUFF_SIZE   100U
 
 /* Define states of the state machine */
 typedef enum {
@@ -25,14 +27,14 @@ typedef enum {
     EVENT_OPEN_CONN,
     EVENT_CLOSE_CONN,
     EVENT_SEND_DATA,
-    EVENT_RECV_CONN_REQ = 6200U,
-    EVENT_RECV_CONN_RESP = 6201U,
-    EVENT_RECV_RETR_REQ = 6212U,
-    EVENT_RECV_RETR_RESP = 6213U,
-    EVENT_RECV_DISC_REQ = 6216U,
-    EVENT_RECV_HB = 6220U,
-    EVENT_RECV_DATA = 6240U,
-    EVENT_RECV_RETR_DATA = 6241U
+    EVENT_RECV_CONN_REQ,
+    EVENT_RECV_CONN_RESP,
+    EVENT_RECV_RETR_REQ,
+    EVENT_RECV_RETR_RESP,
+    EVENT_RECV_DISC_REQ,
+    EVENT_RECV_HB,
+    EVENT_RECV_DATA,
+    EVENT_RECV_RETR_DATA
 } Event;
 
 
@@ -45,7 +47,7 @@ typedef enum {
 typedef struct SmType SmType;
 
 /* Type definition for the state handler function pointer */
-typedef void (*EventHandler)(SmType *self, const Event event, const PDU_S recv_pdu);
+typedef void (*EventHandler)(SmType *self, const Event event, const PDU_S *pdu);
 
 /* State machine context definition */
 struct SmType {
@@ -82,6 +84,6 @@ StdRet_t Sm_Init(SmType *self);
  * @param[in]   event       Received event to handle.
  * @param[in]   recv_pdu    Received PDU to handle.
  */
-void Sm_HandleEvent(SmType *self, const Event event, const PDU_S recv_pdu);
+void Sm_HandleEvent(SmType *self, const Event event, const PDU_S *pdu);
 
 #endif /* SM_H */
