@@ -68,7 +68,8 @@ static int setup_conn_req(void **state)
         return_value = -1;
     }
 
-    *p = ConnReq(&sms[0]);
+    // *p = ConnReq(&sms[0]);
+    ConnReq(&sms[0], p);
     *state = p;
 
     return return_value;
@@ -81,7 +82,8 @@ static int setup_hb(void **state)
     if (p == NULL) {
         return_value = -1;
     }
-    *p = HB(&sms[0]);
+    // *p = HB(&sms[0]);
+    HB(&sms[0], p);
     *state = p;
 
    return return_value;
@@ -191,5 +193,10 @@ static StdRet_t My_ReceiveSpdu(const MsgId_t msgId, const MsgLen_t msgLen, const
 static StdRet_t My_SendSpdu(const MsgId_t msgId, const MsgLen_t msgLen, const uint8_t* const pMsgData)
 {   
     StdRet_t ret = OK;
+    for (int i = 0; i < msgLen; i++)
+    {
+        printf("%c", pMsgData[i]);
+    }
+    printf("\n");
     return ret;
 }

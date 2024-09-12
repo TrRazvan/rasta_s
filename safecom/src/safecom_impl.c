@@ -16,6 +16,7 @@ StdRet_t SafeCom_Init_Impl(SafeCom* const self, const SafeComType* const pConfig
     LOG_INFO("callouts of module %s: %p, %p", pConfig->config.instname, self->vtable.SendSpdu, self->vtable.ReceiveMsg);
 
     sms = pConfig->config.sms;
+    sms->vtable = &self->vtable;
 
     for (int i=0; i<pConfig->config.max_connections; i++) {
         sms[i].channel = i;
@@ -47,7 +48,7 @@ StdRet_t SafeCom_SendData_Impl(const SafeCom* const self, const MsgId_t msgId, c
     assert(pMsgData != NULL);
     /* Implementation specific to SafeCom_SendData */
     PDU_S pdu = { 0 };
-    pdu = Data(&sms[msgId], msgLen, pMsgData);
+    Data(&sms[msgId], &pdu, msgLen, pMsgData);
     Sm_HandleEvent(&sms[msgId], EVENT_SEND_DATA, &pdu);
     return INIT_RET;
 }

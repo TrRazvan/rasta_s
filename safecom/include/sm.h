@@ -37,7 +37,6 @@ typedef enum {
     EVENT_RECV_RETR_DATA
 } Event;
 
-
 typedef enum {
     ROLE_CLIENT,
     ROLE_SERVER
@@ -47,7 +46,7 @@ typedef enum {
 typedef struct SmType SmType;
 
 /* Type definition for the state handler function pointer */
-typedef void (*EventHandler)(SmType *self, const Event event, const PDU_S *pdu);
+typedef void (*EventHandler)(SmType *self, const Event event, PDU_S *pdu);
 
 /* State machine context definition */
 struct SmType {
@@ -65,6 +64,7 @@ struct SmType {
     int32_t ctspdu; /* Confirmed timestamp (field in the protocol data unit) */
     int32_t tspdu;  /* Timestamp for the sender (field in the protocol data unit) */
     EventHandler handle_event;
+    SafeComVtable *vtable; 
 };
 
 /**
@@ -82,8 +82,8 @@ StdRet_t Sm_Init(SmType *self);
  *
  * @param[in]   self        Pointer to my RastaS structure handle.
  * @param[in]   event       Received event to handle.
- * @param[in]   recv_pdu    Received PDU to handle.
+ * @param[in]   pdu         PDU to handle.
  */
-void Sm_HandleEvent(SmType *self, const Event event, const PDU_S *pdu);
+void Sm_HandleEvent(SmType *self, const Event event, PDU_S *pdu);
 
 #endif /* SM_H */

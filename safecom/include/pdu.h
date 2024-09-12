@@ -54,7 +54,7 @@ typedef struct {
     uint32_t confirmed_sequence_number;
     uint32_t timestamp;
     uint32_t confirmed_timestamp;
-    uint8_t *payload;
+    const uint8_t *payload;
     uint8_t *safety_code;
 } PDU_S;
 
@@ -92,67 +92,60 @@ void deserialize_pdu(const uint8_t *buffer, const size_t buffer_size, PDU_S *pdu
  * @brief Create PDU for Connection Request.
  * 
  * @param[in]   self    State machine context structure.   
- *  
- * @return  Returns a Connection Request PDU.
+ * @param[in]   pdu     Pointer to the pdu that need to be build.
  */
-PDU_S ConnReq(SmType *self);
+void ConnReq(const SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Connection Response.
  * 
  * @param[in]   self    State machine context structure. 
- *  
- * @return  Returns a Connection Response PDU.
+ * @param[in]   pdu     Pointer to the pdu that need to be build.
  */
-PDU_S ConnResp(SmType *self);
+void ConnResp(const SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Retransmission Request.
  * 
  * @param[in]   self    State machine context structure.  
- * 
- * @return  Returns a Retransmission Request PDU.
+ * @param[in]   pdu     Pointer to the pdu that need to be build.
  */
-PDU_S RetrReq(SmType *self);
+void RetrReq(const SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Retransmission Response.
  * 
  * @param[in]   self    State machine context structure.
- * 
- * @return  Returns a Retransmission Response PDU.
+ * @param[in]   pdu     Pointer to the pdu that need to be build.
  */
-PDU_S RetrResp(SmType *self);
+void RetrResp(const SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Disconnection Request.
  * 
+ * @param[in]   self            State machine context structure.  
+ * @param[in]   pdu             Pointer to the pdu that need to be build. 
  * @param[in]   discReason      Disconnection reason.
  * @param[in]   detailedReason  If user request disconnection, then a detail about disconnection should be passed.
- * @param[in]   self            State machine context structure.  
- * 
- * @return  Returns a Disconnection Request PDU.
  */
-PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType *self);
+void DiscReq(const SmType *self, PDU_S *pdu, DiscReasonType discReason, uint16_t detailedReason);
 
 /**
  * @brief Create PDU for Heartbeat.
   * 
- * @param[in]   self    State machine context structure.  
- * 
- * @return  Returns a Heartbeat PDU.
+ * @param[in]   self    State machine context structure.
+ * @param[in]   pdu     Pointer to the pdu that need to be build. 
  */
-PDU_S HB(SmType *self);
+void HB(const SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Data.
   * 
- * @param[in]   self        State machine context structure.  
+ * @param[in]   self        State machine context structure. 
+ * @param[in]   pdu         Pointer to the pdu that need to be build. 
  * @param[in]   msgLen      The length of the data that will be transmitted.
  * @param[in]   pMsgData    Pointer to the data that will be transmitted.
- * 
- * @return  Returns a Data PDU.
  */
-PDU_S Data(SmType *self, const uint8_t msgLen, const uint8_t *pMsgData);
+void Data(const SmType *self, PDU_S *pdu, const uint8_t msgLen, const uint8_t *pMsgData);
 
 #endif // PDU_H

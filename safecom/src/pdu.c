@@ -97,20 +97,6 @@ static uint8_t *ConnRespPayload()
     return buffer;
 }
 
-/* Create payload for Retransmission Request */
-static uint8_t *RetrReqPayload()
-{
-    /* RetrReq has no payload */
-    return NULL;
-}
-
-/* Create payload for Retransmission Response */
-static uint8_t *RetrRespPayload()
-{
-    /* RetrReq has no payload */
-    return NULL;
-}
-
 /* Create payload for Disconnection Request */
 static uint8_t *DiscReqPayload(DiscReasonType discReason, uint16_t detailedReason)
 {
@@ -124,13 +110,6 @@ static uint8_t *DiscReqPayload(DiscReasonType discReason, uint16_t detailedReaso
     buffer[3] = discReason;
 
     return buffer;
-}
-
-/* Create payload for Heartbeat */
-static uint8_t *HBPayload()
-{
-    /* HB has no payload data */
-    return NULL;
 }
 
 /* Create payload for Data */
@@ -244,148 +223,120 @@ void deserialize_pdu(const uint8_t *buffer, const size_t buffer_size, PDU_S *pdu
 }
 
 /* Create PDU for Connection Request */
-PDU_S ConnReq(SmType *self)
+void ConnReq(const SmType *self, PDU_S *pdu)
 {
-    PDU_S ret_pdu = {0};
-
-    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH + CONN_REQ_PAYLOAD_LENGTH;
-    ret_pdu.message_type = CONNECTION_REQUEST;
-    ret_pdu.receiver_id = RECEIVER_ID;
-    ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self->snt;
-    ret_pdu.confirmed_sequence_number = 0;
-    ret_pdu.timestamp = GetCurrentTimestamp();
-    ret_pdu.confirmed_timestamp = 0;
-    ret_pdu.payload = ConnReqPayload();
+    pdu->message_length = PDU_FIXED_FIELDS_LENGTH + CONN_REQ_PAYLOAD_LENGTH;
+    pdu->message_type = CONNECTION_REQUEST;
+    pdu->receiver_id = RECEIVER_ID;
+    pdu->sender_id = SENDER_ID;
+    pdu->sequence_number = self->snt;
+    pdu->confirmed_sequence_number = 0;
+    pdu->timestamp = GetCurrentTimestamp();
+    pdu->confirmed_timestamp = 0;
+    pdu->payload = ConnReqPayload();
 
     /* Calculate the safety code with MD4 protocol */
-    calculate_MD4(&ret_pdu);
-
-    return ret_pdu;
+    calculate_MD4(pdu);
 }
 
 /* Create PDU for Connection Response */
-PDU_S ConnResp(SmType *self)
+void ConnResp(const SmType *self, PDU_S *pdu)
 {
-    PDU_S ret_pdu = {0};
-
-    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH + CONN_RESP_PAYLOAD_LENGTH;
-    ret_pdu.message_type = CONNECTION_RESPONSE;
-    ret_pdu.receiver_id = RECEIVER_ID;
-    ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self->snt;
-    ret_pdu.confirmed_sequence_number = self->cspdu;
-    ret_pdu.timestamp = GetCurrentTimestamp();
-    ret_pdu.confirmed_timestamp = self->ctspdu;
-    ret_pdu.payload = ConnRespPayload();
+    pdu->message_length = PDU_FIXED_FIELDS_LENGTH + CONN_RESP_PAYLOAD_LENGTH;
+    pdu->message_type = CONNECTION_RESPONSE;
+    pdu->receiver_id = RECEIVER_ID;
+    pdu->sender_id = SENDER_ID;
+    pdu->sequence_number = self->snt;
+    pdu->confirmed_sequence_number = self->cspdu;
+    pdu->timestamp = GetCurrentTimestamp();
+    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->payload = ConnRespPayload();
 
     /* Calculate the safety code with MD4 protocol */
-    calculate_MD4(&ret_pdu);
-
-    return ret_pdu;
+    calculate_MD4(pdu);
 }
 
 /* Create PDU for Retransmission Request */
-PDU_S RetrReq(SmType *self)
+void RetrReq(const SmType *self, PDU_S *pdu)
 {
-    PDU_S ret_pdu = {0};
-
-    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH;
-    ret_pdu.message_type = RETRANSMISSION_REQUEST;
-    ret_pdu.receiver_id = RECEIVER_ID;
-    ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self->snpdu;
-    ret_pdu.confirmed_sequence_number = self->cspdu;
-    ret_pdu.timestamp = GetCurrentTimestamp();
-    ret_pdu.confirmed_timestamp = self->ctspdu;
-    ret_pdu.payload = RetrReqPayload();
+    pdu->message_length = PDU_FIXED_FIELDS_LENGTH;
+    pdu->message_type = RETRANSMISSION_REQUEST;
+    pdu->receiver_id = RECEIVER_ID;
+    pdu->sender_id = SENDER_ID;
+    pdu->sequence_number = self->snpdu;
+    pdu->confirmed_sequence_number = self->cspdu;
+    pdu->timestamp = GetCurrentTimestamp();
+    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->payload = NULL;
 
     /* Calculate the safety code with MD4 protocol */
-    calculate_MD4(&ret_pdu);
-
-    return ret_pdu;
+    calculate_MD4(pdu);
 }
 
 /* Create PDU for Retransmission Response */
-PDU_S RetrResp(SmType *self)
+void RetrResp(const SmType *self, PDU_S *pdu)
 {
-    PDU_S ret_pdu = {0};
-
-    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH;
-    ret_pdu.message_type = RETRANSMISSION_RESPONSE;
-    ret_pdu.receiver_id = RECEIVER_ID;
-    ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self->snpdu;
-    ret_pdu.confirmed_sequence_number = self->cspdu;
-    ret_pdu.timestamp = GetCurrentTimestamp();
-    ret_pdu.confirmed_timestamp = self->ctspdu;
-    ret_pdu.payload = RetrRespPayload();
+    pdu->message_length = PDU_FIXED_FIELDS_LENGTH;
+    pdu->message_type = RETRANSMISSION_RESPONSE;
+    pdu->receiver_id = RECEIVER_ID;
+    pdu->sender_id = SENDER_ID;
+    pdu->sequence_number = self->snpdu;
+    pdu->confirmed_sequence_number = self->cspdu;
+    pdu->timestamp = GetCurrentTimestamp();
+    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->payload = NULL;
 
     /* Calculate the safety code with MD4 protocol */
-    calculate_MD4(&ret_pdu);
-
-    return ret_pdu;
+    calculate_MD4(pdu);
 }
 
 /* Create PDU for Disconnection Request */
-PDU_S DiscReq(DiscReasonType discReason, uint16_t detailedReason, SmType *self)
+void DiscReq(const SmType *self, PDU_S *pdu, const DiscReasonType discReason, const uint16_t detailedReason)
 {
-    PDU_S ret_pdu = {0};
-
-    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH + DISC_REQ_PAYLOAD_LENGTH;
-    ret_pdu.message_type = DISCONNECTION_REQUEST;
-    ret_pdu.receiver_id = RECEIVER_ID;
-    ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self->snpdu;
-    ret_pdu.confirmed_sequence_number = self->cspdu;
-    ret_pdu.timestamp = GetCurrentTimestamp();
-    ret_pdu.confirmed_timestamp = self->ctspdu;
-    ret_pdu.payload = DiscReqPayload(discReason, detailedReason);
+    pdu->message_length = PDU_FIXED_FIELDS_LENGTH + DISC_REQ_PAYLOAD_LENGTH;
+    pdu->message_type = DISCONNECTION_REQUEST;
+    pdu->receiver_id = RECEIVER_ID;
+    pdu->sender_id = SENDER_ID;
+    pdu->sequence_number = self->snpdu;
+    pdu->confirmed_sequence_number = self->cspdu;
+    pdu->timestamp = GetCurrentTimestamp();
+    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->payload = DiscReqPayload(discReason, detailedReason);
 
     /* Calculate the safety code with MD4 protocol */
-    calculate_MD4(&ret_pdu);
-
-    return ret_pdu;
+    calculate_MD4(pdu);
 }
 
 /* Create PDU for Heartbeat */
-PDU_S HB(SmType *self)
+void HB(const SmType *self, PDU_S *pdu)
 {
-    PDU_S ret_pdu = {0};
-
-    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH;
-    ret_pdu.message_type = HEARTBEAT;
-    ret_pdu.receiver_id = RECEIVER_ID;
-    ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self->snpdu;
-    ret_pdu.confirmed_sequence_number = self->cspdu;
-    ret_pdu.timestamp = GetCurrentTimestamp();
-    ret_pdu.confirmed_timestamp = self->ctspdu;
-    ret_pdu.payload = HBPayload();
+    pdu->message_length = PDU_FIXED_FIELDS_LENGTH;
+    pdu->message_type = HEARTBEAT;
+    pdu->receiver_id = RECEIVER_ID;
+    pdu->sender_id = SENDER_ID;
+    pdu->sequence_number = self->snpdu;
+    pdu->confirmed_sequence_number = self->cspdu;
+    pdu->timestamp = GetCurrentTimestamp();
+    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->payload = NULL;
 
     /* Calculate the safety code with MD4 protocol */
-    calculate_MD4(&ret_pdu);
-
-    return ret_pdu;
+    calculate_MD4(pdu);
 }
 
 /* Create PDU for Data */
-PDU_S Data(SmType *self, const uint8_t msgLen, const uint8_t *pMsgData)
+void Data(const SmType *self, PDU_S *pdu, const uint8_t msgLen, const uint8_t *pMsgData)
 {
-    PDU_S ret_pdu = {0};
-
-    ret_pdu.message_length = PDU_FIXED_FIELDS_LENGTH + msgLen;
-    ret_pdu.message_type = DATA;
-    ret_pdu.receiver_id = RECEIVER_ID;
-    ret_pdu.sender_id = SENDER_ID;
-    ret_pdu.sequence_number = self->snpdu;
-    ret_pdu.confirmed_sequence_number = self->cspdu;
-    ret_pdu.timestamp = GetCurrentTimestamp();
-    ret_pdu.confirmed_timestamp = self->ctspdu;
-    ret_pdu.payload = DataPayload(msgLen, pMsgData);
+    pdu->message_length = PDU_FIXED_FIELDS_LENGTH + msgLen;
+    pdu->message_type = DATA;
+    pdu->receiver_id = RECEIVER_ID;
+    pdu->sender_id = SENDER_ID;
+    pdu->sequence_number = self->snpdu;
+    pdu->confirmed_sequence_number = self->cspdu;
+    pdu->timestamp = GetCurrentTimestamp();
+    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->payload = pMsgData;
 
     /* Calculate the safety code with MD4 protocol */
-    calculate_MD4(&ret_pdu);
-
-    return ret_pdu;
+    calculate_MD4(pdu);
 }
