@@ -15,8 +15,8 @@ target_sources(${CMOCKA_TEST_NAME} PRIVATE
         # test_sm_connection/test_sm_connection.c
         # test_rass_functionality/test_rass_server.c
         # test_rass_functionality/test_rass_client.c
-        # mock_tests/mock_tests.c
-        test_rass_functionality/test_rass_send_data.c
+        # test_rass_functionality/test_rass_send_data.c
+        test_timeout/test_timeout.c
         )
 
 
