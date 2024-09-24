@@ -1,6 +1,7 @@
 #include "pdu.h"
 #include "sm.h"
 #include "assert.h"
+#include "time_mon.h"
 
 static void write_uint16(uint8_t *buffer, size_t *offset, uint16_t value)
  {
@@ -43,12 +44,6 @@ static uint32_t read_uint32(const uint8_t *buffer, size_t *offset)
                      (uint32_t)(buffer[*offset + 2] << SHIFT_1_BYTES) | (uint32_t)buffer[*offset + 3];
     *offset += 4;
     return value;
-}
-
-static uint32_t GetCurrentTimestamp(void)
-{
-    /* TODO: RTR - Implement a platform-specific method to obtain a timestamp */
-    return 0U;
 }
 
 /* Create payload for Connection Request */
@@ -223,15 +218,17 @@ void deserialize_pdu(const uint8_t *buffer, const size_t buffer_size, PDU_S *pdu
 }
 
 /* Create PDU for Connection Request */
-void ConnReq(const SmType *self, PDU_S *pdu)
+void ConnReq(SmType *self, PDU_S *pdu)
 {
+    // self->snt++;
+
     pdu->message_length = PDU_FIXED_FIELDS_LENGTH + CONN_REQ_PAYLOAD_LENGTH;
     pdu->message_type = CONNECTION_REQUEST;
     pdu->receiver_id = RECEIVER_ID;
     pdu->sender_id = SENDER_ID;
     pdu->sequence_number = self->snt;
     pdu->confirmed_sequence_number = 0;
-    pdu->timestamp = GetCurrentTimestamp();
+    pdu->timestamp = self->time.Tlocal();
     pdu->confirmed_timestamp = 0;
     pdu->payload = ConnReqPayload();
 
@@ -240,16 +237,18 @@ void ConnReq(const SmType *self, PDU_S *pdu)
 }
 
 /* Create PDU for Connection Response */
-void ConnResp(const SmType *self, PDU_S *pdu)
+void ConnResp(SmType *self, PDU_S *pdu)
 {
+    // self->snt++;
+
     pdu->message_length = PDU_FIXED_FIELDS_LENGTH + CONN_RESP_PAYLOAD_LENGTH;
     pdu->message_type = CONNECTION_RESPONSE;
     pdu->receiver_id = RECEIVER_ID;
     pdu->sender_id = SENDER_ID;
     pdu->sequence_number = self->snt;
-    pdu->confirmed_sequence_number = self->cspdu;
-    pdu->timestamp = GetCurrentTimestamp();
-    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->confirmed_sequence_number = self->cst;
+    pdu->timestamp = self->time.Tlocal();
+    pdu->confirmed_timestamp = self->ctsr;
     pdu->payload = ConnRespPayload();
 
     /* Calculate the safety code with MD4 protocol */
@@ -257,16 +256,18 @@ void ConnResp(const SmType *self, PDU_S *pdu)
 }
 
 /* Create PDU for Retransmission Request */
-void RetrReq(const SmType *self, PDU_S *pdu)
+void RetrReq(SmType *self, PDU_S *pdu)
 {
+    self->snt++;
+
     pdu->message_length = PDU_FIXED_FIELDS_LENGTH;
     pdu->message_type = RETRANSMISSION_REQUEST;
     pdu->receiver_id = RECEIVER_ID;
     pdu->sender_id = SENDER_ID;
-    pdu->sequence_number = self->snpdu;
-    pdu->confirmed_sequence_number = self->cspdu;
-    pdu->timestamp = GetCurrentTimestamp();
-    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->sequence_number = self->snt;
+    pdu->confirmed_sequence_number = self->cst;
+    pdu->timestamp = self->time.Tlocal();
+    pdu->confirmed_timestamp = self->ctsr;
     pdu->payload = NULL;
 
     /* Calculate the safety code with MD4 protocol */
@@ -274,16 +275,18 @@ void RetrReq(const SmType *self, PDU_S *pdu)
 }
 
 /* Create PDU for Retransmission Response */
-void RetrResp(const SmType *self, PDU_S *pdu)
+void RetrResp(SmType *self, PDU_S *pdu)
 {
+    self->snt++;
+
     pdu->message_length = PDU_FIXED_FIELDS_LENGTH;
     pdu->message_type = RETRANSMISSION_RESPONSE;
     pdu->receiver_id = RECEIVER_ID;
     pdu->sender_id = SENDER_ID;
-    pdu->sequence_number = self->snpdu;
-    pdu->confirmed_sequence_number = self->cspdu;
-    pdu->timestamp = GetCurrentTimestamp();
-    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->sequence_number = self->snt;
+    pdu->confirmed_sequence_number = self->cst;
+    pdu->timestamp = self->time.Tlocal();
+    pdu->confirmed_timestamp = self->ctsr;
     pdu->payload = NULL;
 
     /* Calculate the safety code with MD4 protocol */
@@ -291,16 +294,18 @@ void RetrResp(const SmType *self, PDU_S *pdu)
 }
 
 /* Create PDU for Disconnection Request */
-void DiscReq(const SmType *self, PDU_S *pdu, const DiscReasonType discReason, const uint16_t detailedReason)
+void DiscReq(SmType *self, PDU_S *pdu, const DiscReasonType discReason, const uint16_t detailedReason)
 {
+    self->snt++;
+
     pdu->message_length = PDU_FIXED_FIELDS_LENGTH + DISC_REQ_PAYLOAD_LENGTH;
     pdu->message_type = DISCONNECTION_REQUEST;
     pdu->receiver_id = RECEIVER_ID;
     pdu->sender_id = SENDER_ID;
-    pdu->sequence_number = self->snpdu;
-    pdu->confirmed_sequence_number = self->cspdu;
-    pdu->timestamp = GetCurrentTimestamp();
-    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->sequence_number = self->snt;
+    pdu->confirmed_sequence_number = self->cst;
+    pdu->timestamp = self->time.Tlocal();
+    pdu->confirmed_timestamp = self->ctsr;
     pdu->payload = DiscReqPayload(discReason, detailedReason);
 
     /* Calculate the safety code with MD4 protocol */
@@ -308,16 +313,18 @@ void DiscReq(const SmType *self, PDU_S *pdu, const DiscReasonType discReason, co
 }
 
 /* Create PDU for Heartbeat */
-void HB(const SmType *self, PDU_S *pdu)
+void HB(SmType *self, PDU_S *pdu)
 {
+    self->snt++;
+
     pdu->message_length = PDU_FIXED_FIELDS_LENGTH;
     pdu->message_type = HEARTBEAT;
     pdu->receiver_id = RECEIVER_ID;
     pdu->sender_id = SENDER_ID;
-    pdu->sequence_number = self->snpdu;
-    pdu->confirmed_sequence_number = self->cspdu;
-    pdu->timestamp = GetCurrentTimestamp();
-    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->sequence_number = self->snt;
+    pdu->confirmed_sequence_number = self->cst;
+    pdu->timestamp = self->time.Tlocal();
+    pdu->confirmed_timestamp = self->ctsr;
     pdu->payload = NULL;
 
     /* Calculate the safety code with MD4 protocol */
@@ -325,16 +332,18 @@ void HB(const SmType *self, PDU_S *pdu)
 }
 
 /* Create PDU for Data */
-void Data(const SmType *self, PDU_S *pdu, const uint8_t msgLen, const uint8_t *pMsgData)
+void Data(SmType *self, PDU_S *pdu, const uint8_t msgLen, const uint8_t *pMsgData)
 {
+    self->snt++;
+
     pdu->message_length = PDU_FIXED_FIELDS_LENGTH + msgLen;
     pdu->message_type = DATA;
     pdu->receiver_id = RECEIVER_ID;
     pdu->sender_id = SENDER_ID;
-    pdu->sequence_number = self->snpdu;
-    pdu->confirmed_sequence_number = self->cspdu;
-    pdu->timestamp = GetCurrentTimestamp();
-    pdu->confirmed_timestamp = self->ctspdu;
+    pdu->sequence_number = self->snt;
+    pdu->confirmed_sequence_number = self->cst;
+    pdu->timestamp = self->time.Tlocal();
+    pdu->confirmed_timestamp = self->ctsr;
     pdu->payload = pMsgData;
 
     /* Calculate the safety code with MD4 protocol */

@@ -94,7 +94,7 @@ void deserialize_pdu(const uint8_t *buffer, const size_t buffer_size, PDU_S *pdu
  * @param[in]   self    State machine context structure.   
  * @param[in]   pdu     Pointer to the pdu that need to be build.
  */
-void ConnReq(const SmType *self, PDU_S *pdu);
+void ConnReq(SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Connection Response.
@@ -102,7 +102,7 @@ void ConnReq(const SmType *self, PDU_S *pdu);
  * @param[in]   self    State machine context structure. 
  * @param[in]   pdu     Pointer to the pdu that need to be build.
  */
-void ConnResp(const SmType *self, PDU_S *pdu);
+void ConnResp(SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Retransmission Request.
@@ -110,7 +110,7 @@ void ConnResp(const SmType *self, PDU_S *pdu);
  * @param[in]   self    State machine context structure.  
  * @param[in]   pdu     Pointer to the pdu that need to be build.
  */
-void RetrReq(const SmType *self, PDU_S *pdu);
+void RetrReq(SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Retransmission Response.
@@ -118,7 +118,7 @@ void RetrReq(const SmType *self, PDU_S *pdu);
  * @param[in]   self    State machine context structure.
  * @param[in]   pdu     Pointer to the pdu that need to be build.
  */
-void RetrResp(const SmType *self, PDU_S *pdu);
+void RetrResp(SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Disconnection Request.
@@ -128,7 +128,7 @@ void RetrResp(const SmType *self, PDU_S *pdu);
  * @param[in]   discReason      Disconnection reason.
  * @param[in]   detailedReason  If user request disconnection, then a detail about disconnection should be passed.
  */
-void DiscReq(const SmType *self, PDU_S *pdu, DiscReasonType discReason, uint16_t detailedReason);
+void DiscReq(SmType *self, PDU_S *pdu, DiscReasonType discReason, uint16_t detailedReason);
 
 /**
  * @brief Create PDU for Heartbeat.
@@ -136,7 +136,7 @@ void DiscReq(const SmType *self, PDU_S *pdu, DiscReasonType discReason, uint16_t
  * @param[in]   self    State machine context structure.
  * @param[in]   pdu     Pointer to the pdu that need to be build. 
  */
-void HB(const SmType *self, PDU_S *pdu);
+void HB(SmType *self, PDU_S *pdu);
 
 /**
  * @brief Create PDU for Data.
@@ -146,6 +146,6 @@ void HB(const SmType *self, PDU_S *pdu);
  * @param[in]   msgLen      The length of the data that will be transmitted.
  * @param[in]   pMsgData    Pointer to the data that will be transmitted.
  */
-void Data(const SmType *self, PDU_S *pdu, const uint8_t msgLen, const uint8_t *pMsgData);
+void Data(SmType *self, PDU_S *pdu, const uint8_t msgLen, const uint8_t *pMsgData);
 
 #endif // PDU_H

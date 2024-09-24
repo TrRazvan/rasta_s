@@ -6,6 +6,7 @@
 #include "pdu.h"
 #include "types.h"
 #include "safecom_vtable.h"
+#include "time_mon.h"
 
 #define TMAX    500U /* TODO: RTR - Define TMP_MAX */
 #define MAX_BUFF_SIZE   100U
@@ -55,16 +56,13 @@ struct SmType {
     SmRole role;    /* The state machine can act like a client or like a server */
     int32_t snr;    /* Receive sequence number (i.e. the expected sequence number of the next received protocol data unit) */
     int32_t snt;    /* Send sequence number (i.e. the sequence number of the protocol data unit to be sent next) */
-    int32_t snpdu;  /* Sequence number field of a protocol data unit */
     int32_t cst;    /* Sequence number to be confirmed (which is transmitted at the next protocol data unit to be sent) */
     int32_t csr;    /* Last received confirmed sequence number */
     int32_t tsr;    /* Timestamp of the last formally correct message received */
     int32_t ctsr;   /* Confirmed timestamp of the last received message relevant to time monitoring */
-    int32_t cspdu;  /* Confirmed sequence number field of a protocol data unit */
-    int32_t ctspdu; /* Confirmed timestamp (field in the protocol data unit) */
-    int32_t tspdu;  /* Timestamp for the sender (field in the protocol data unit) */
     EventHandler handle_event;
     SafeComVtable *vtable; 
+    TimeMonitoring time;
 };
 
 /**

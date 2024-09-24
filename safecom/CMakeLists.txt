@@ -18,7 +18,7 @@ target_sources(${LIB_NAME} PRIVATE
     src/md4.c
     src/pdu.c
     src/sm.c
-    src/event_queue.c)
+    src/time_mon.c)
 
 target_include_directories(${LIB_NAME} PRIVATE src)
 target_link_libraries(${LIB_NAME} ${LINKED_LIBS})

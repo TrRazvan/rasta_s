@@ -2,6 +2,7 @@
 #include "assert.h"
 #include "sm.h"
 #include "log.h"
+#include "time_mon.h"
 
 static const StdRet_t INIT_RET = OK;
 
@@ -17,6 +18,8 @@ StdRet_t SafeCom_Init_Impl(SafeCom* const self, const SafeComType* const pConfig
 
     sms = pConfig->config.sms;
     sms->vtable = &self->vtable;
+
+    sms->time.Tlocal = GetCurrentTimestamp;
 
     for (int i=0; i<pConfig->config.max_connections; i++) {
         sms[i].channel = i;

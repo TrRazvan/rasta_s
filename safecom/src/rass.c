@@ -7,16 +7,12 @@ static SafeCom RassInstance;
 static SafeComConfig RassConfig = { .role = ROLE_CLIENT, .instname = "JohnDoe\0" };
 static const SafeComVtable RassVTable = { .SendSpdu = IscDispApp_SendSpdu, .ReceiveMsg = Fec_ReceiveBtp };
 
-SafeComVtable globalVtable = {0};
-
 static bool initialized = false; /* we are in a single threaded context */
 
 StdRet_t Rass_Init_VTable(const SafeComType* const pConfig) {
     assert(pConfig != NULL);
     assert(pConfig->vtable.ReceiveMsg != NULL);
     assert(pConfig->vtable.SendSpdu != NULL);
-
-    globalVtable = pConfig->vtable;
 
     return (initialized==true) ? NOT_OK : (initialized=true, SafeCom_Init(&RassInstance, pConfig));
 }
