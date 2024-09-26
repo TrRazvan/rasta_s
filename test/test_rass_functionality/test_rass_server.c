@@ -68,7 +68,7 @@ static int setup_conn_req(void **state)
         return_value = -1;
     }
 
-    *p = ConnReq(&sms[0]);
+    ConnReq(&sms[0], p);
     *state = p;
 
     return return_value;
@@ -81,7 +81,7 @@ static int setup_hb(void **state)
     if (p == NULL) {
         return_value = -1;
     }
-    *p = HB(&sms[0]);
+    HB(&sms[0], p);
     *state = p;
 
    return return_value;
@@ -173,7 +173,15 @@ static StdRet_t My_ReceiveSpdu(const MsgId_t msgId, const MsgLen_t msgLen, const
 
     PDU_S pdu = { 0 };
     deserialize_pdu(pMsgData, msgLen, &pdu);
-    Sm_HandleEvent(&sms[msgId], pdu.message_type, &pdu);
+
+    if (pdu.message_type == CONNECTION_REQUEST)
+    {
+        Sm_HandleEvent(&sms[msgId], EVENT_RECV_CONN_REQ, &pdu);
+    }
+    else if (pdu.message_type == HEARTBEAT)
+    {
+        Sm_HandleEvent(&sms[msgId], EVENT_RECV_HB, &pdu);
+    }
     
     return ret;
 }

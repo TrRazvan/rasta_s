@@ -68,7 +68,7 @@ static int setup_conn_resp(void **state)
         return_value = -1;
     }
 
-    *p = ConnResp(&sms[0]);
+    ConnResp(&sms[0], p);
     *state = p;
 
     return return_value;
@@ -155,7 +155,10 @@ static StdRet_t My_ReceiveSpdu(const MsgId_t msgId, const MsgLen_t msgLen, const
 
     PDU_S pdu = { 0 };
     deserialize_pdu(pMsgData, msgLen, &pdu);
-    Sm_HandleEvent(&sms[msgId], pdu.message_type, &pdu);
+    if (pdu.message_type == CONNECTION_RESPONSE)
+    {
+        Sm_HandleEvent(&sms[msgId], EVENT_RECV_CONN_RESP, &pdu);
+    }
     
     return ret;
 }

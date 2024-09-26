@@ -13,11 +13,13 @@ static SmType sm_server = {
     .channel=0U,
     .role=ROLE_SERVER,
     .state=STATE_CLOSED,
+    .vtable = NULL,
 }; 
 static SmType sm_client = {
     .channel=0U,
     .role=ROLE_CLIENT,
     .state=STATE_CLOSED,
+    .vtable = NULL,
 };
 
 static void test_sm_client_init(void** state)
@@ -32,9 +34,6 @@ static void test_sm_client_init(void** state)
 static void test_sm_client_init_to_open(void** state)
 {
     PDU_S pdu = { 0 };
-    
-    test_sm_client_init(state);
-    assert_true(sm_client.state==STATE_CLOSED);
 
     Sm_HandleEvent(&sm_client, EVENT_OPEN_CONN, &pdu);
     assert_true(sm_client.state==STATE_START);
@@ -53,9 +52,6 @@ static void test_sm_server_init_to_open(void** state)
 {
     PDU_S pdu = { 0 };
 
-    test_sm_server_init(state);
-    assert_true(sm_server.state==STATE_CLOSED);
-
     Sm_HandleEvent(&sm_server, EVENT_OPEN_CONN, &pdu);
     assert_true(sm_server.state==STATE_DOWN);
 }
@@ -64,7 +60,7 @@ static void test_sm_server_conn_req(void** state)
 {
     PDU_S pdu = { 0 };
 
-    pdu = ConnReq(&sm_server);
+    ConnReq(&sm_server, &pdu);
 
     Sm_HandleEvent(&sm_server, EVENT_RECV_CONN_REQ, &pdu);
     assert_true(sm_server.state==STATE_START);
@@ -74,7 +70,7 @@ static void test_sm_client_conn_resp(void** state)
 {
     PDU_S pdu = { 0 };
 
-    pdu = ConnResp(&sm_client);
+    ConnResp(&sm_client, &pdu);
 
     Sm_HandleEvent(&sm_client, EVENT_RECV_CONN_RESP, &pdu);
     assert_true(sm_client.state==STATE_UP);
@@ -84,7 +80,7 @@ static void test_sm_server_heartbeat(void** state)
 {
     PDU_S pdu = { 0 };
 
-    pdu = HB(&sm_server);
+    HB(&sm_server, &pdu);
 
     Sm_HandleEvent(&sm_server, EVENT_RECV_HB, &pdu);
     assert_true(sm_server.state==STATE_UP);
@@ -102,7 +98,7 @@ static void test_sm_server_disc_req(void** state)
 {
     PDU_S pdu = { 0 };
 
-    pdu = DiscReq(USER_REQUEST, NO_DETAILED_REASON, &sm_server);
+    DiscReq(&sm_server, &pdu, USER_REQUEST, NO_DETAILED_REASON);
 
     Sm_HandleEvent(&sm_server, EVENT_RECV_DISC_REQ, &pdu);
     assert_true(sm_server.state==STATE_CLOSED);
